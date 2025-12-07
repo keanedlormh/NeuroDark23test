@@ -11,11 +11,11 @@ class BassSynth {
         this.fxChain = null; 
         this.lastFreq = 0;
         
-        // Default Params (0-100 Scale mostly)
+        // Default Params
         this.params = {
             distortion: 20,
-            cutoff: 40,   // Digital scale (0-100)
-            resonance: 8, // Digital scale (0-20 effectively)
+            cutoff: 40,   // 0-100
+            resonance: 8, // 0-20
             envMod: 60,
             decay: 40,
             waveform: 'sawtooth'
@@ -25,21 +25,35 @@ class BassSynth {
     init(audioContext, destinationNode) {
         this.ctx = audioContext;
         
-        // 1. Setup FX Chain (Distortion)
-        if (typeof window.BassDistortion !== 'undefined') {
-            this.fxChain = new window.BassDistortion(this.ctx);
-            this.fxChain.setDistortion(this.params.distortion);
-            this.fxChain.connect(destinationNode);
-            this.output = this.fxChain.input; 
-        } else {
-            // Fallback si falla la carga
+        // 1. Setup Output & FX Chain
+        // Usamos la nueva clase BassDistortion (basada en tu ejemplo BassFXChain)
+        try {
+            if (typeof window.BassDistortion !== 'undefined') {
+                this.fxChain = new window.BassDistortion(this.ctx);
+                this.fxChain.setDistortion(this.params.distortion);
+                
+                // Conectamos: FX -> Destino
+                this.fxChain.connect(destinationNode);
+                
+                // Nuestra salida interna es la entrada del FX
+                this.output = this.fxChain.input; 
+            } else {
+                console.warn("BassDistortion class missing, running clean.");
+                this.output = this.ctx.createGain();
+                this.output.connect(destinationNode);
+            }
+        } catch (e) {
+            console.error("Error initializing FX Chain:", e);
             this.output = this.ctx.createGain();
             this.output.connect(destinationNode);
         }
     }
 
     // --- Params Setters ---
-    setDistortion(val) { this.params.distortion = val; if(this.fxChain) this.fxChain.setDistortion(val); }
+    setDistortion(val) { 
+        this.params.distortion = val; 
+        if(this.fxChain) this.fxChain.setDistortion(val); 
+    }
     setCutoff(val) { this.params.cutoff = val; }
     setResonance(val) { this.params.resonance = val; }
     setEnvMod(val) { this.params.envMod = val; }
@@ -59,24 +73,24 @@ class BassSynth {
 
         // 2. Nodos
         const osc = this.ctx.createOscillator();
-        const vca = this.ctx.createGain(); // Amplificador controlado por voltaje
+        const vca = this.ctx.createGain(); 
         
         // 3. Oscilador
         osc.type = this.params.waveform;
-        // Drift Analógico: Pequeña desafinación aleatoria (+/- 2 cents) para engordar el sonido
+        // Drift Analógico reducido para un sonido más estable con la nueva distorsión
         osc.detune.value = (Math.random() * 4) - 2; 
 
         // 4. Portamento (Glide)
         if (!this.lastFreq) this.lastFreq = freq;
         if (slide) {
             osc.frequency.setValueAtTime(this.lastFreq, time);
-            osc.frequency.exponentialRampToValueAtTime(freq, time + 0.08); // Glide rápido (303 style)
+            osc.frequency.exponentialRampToValueAtTime(freq, time + 0.08);
         } else {
             osc.frequency.setValueAtTime(freq, time);
         }
         this.lastFreq = freq;
 
-        // 5. Filtro (Delegado a FX Module)
+        // 5. Filtro (Mantenemos BassFilter para el carácter Acid)
         let filterNode = null;
         let filterDecay = 0.5;
 
@@ -85,41 +99,34 @@ class BassSynth {
             filterNode = fResult.node;
             filterDecay = fResult.decayTime;
         } else {
+            // Fallback básico si falla el filtro externo
             filterNode = this.ctx.createBiquadFilter();
             filterNode.frequency.value = 1000; 
         }
 
         // 6. Envolvente de Volumen (VCA)
-        // IMPORTANTE: El volumen no debe cortar la cola de la resonancia/distorsión
-        const peakVol = accent ? 0.85 : 0.65; // Headroom para la distorsión
+        const peakVol = accent ? 0.85 : 0.65; 
         
         vca.gain.setValueAtTime(0, time);
         
         if (slide) {
-            // Legato: No hay release, se mantiene hasta la siguiente nota
             vca.gain.linearRampToValueAtTime(peakVol, time + 0.02);
             vca.gain.setValueAtTime(peakVol, time + duration); 
             vca.gain.linearRampToValueAtTime(0, time + duration + 0.05);
         } else {
-            // Staccato: Ataque rápido
             vca.gain.linearRampToValueAtTime(peakVol, time + 0.005);
-            
-            // Release: Sigue al filtro pero con un mínimo para no sonar seco
             const releaseTime = Math.max(0.18, filterDecay); 
-            
-            // Curva exponencial natural
             vca.gain.setTargetAtTime(0, time + 0.04, releaseTime / 4.5);
         }
 
         // 7. Ruta de Señal: OSC -> FILTER -> VCA -> [DISTORTION INPUT]
-        // Enviamos la señal filtrada y con volumen a la unidad de distorsión
         osc.connect(filterNode);
         filterNode.connect(vca);
         vca.connect(this.output); 
 
         // 8. Ciclo de Vida
         osc.start(time);
-        osc.stop(time + duration + 1.5); // Margen de seguridad amplio
+        osc.stop(time + duration + 1.5); 
 
         osc.onended = () => {
             try {
@@ -130,6 +137,5 @@ class BassSynth {
         };
     }
 }
-
 
 window.BassSynth = BassSynth;
