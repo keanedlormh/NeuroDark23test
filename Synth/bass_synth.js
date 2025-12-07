@@ -11,13 +11,17 @@ class BassSynth {
         this.fxChain = null; 
         this.lastFreq = 0;
         
-        // Default Params
+        // Default Params (Expanded)
         this.params = {
-            distortion: 20,
-            cutoff: 40,   // 0-100
-            resonance: 8, // 0-20
+            volume: 85,       // Main Output Volume
+            distortion: 20,   // Drive amount
+            distTone: 100,    // Distortion Tone (LPF)
+            distGain: 60,     // Distortion Output Gain
+            cutoff: 40, 
+            resonance: 8, 
             envMod: 60,
             decay: 40,
+            accentInt: 50,    // Accent Intensity (How much accent affects filter)
             waveform: 'sawtooth'
         };
     }
@@ -25,17 +29,16 @@ class BassSynth {
     init(audioContext, destinationNode) {
         this.ctx = audioContext;
         
-        // 1. Setup Output & FX Chain
-        // Usamos la nueva clase BassDistortion (basada en tu ejemplo BassFXChain)
         try {
             if (typeof window.BassDistortion !== 'undefined') {
                 this.fxChain = new window.BassDistortion(this.ctx);
+                
+                // Initialize FX Params
                 this.fxChain.setDistortion(this.params.distortion);
+                this.fxChain.setTone(this.params.distTone);
+                this.fxChain.setPostGain(this.params.distGain);
                 
-                // Conectamos: FX -> Destino
                 this.fxChain.connect(destinationNode);
-                
-                // Nuestra salida interna es la entrada del FX
                 this.output = this.fxChain.input; 
             } else {
                 console.warn("BassDistortion class missing, running clean.");
@@ -50,14 +53,28 @@ class BassSynth {
     }
 
     // --- Params Setters ---
+    setVolume(val) { this.params.volume = val; }
+    
     setDistortion(val) { 
         this.params.distortion = val; 
         if(this.fxChain) this.fxChain.setDistortion(val); 
     }
+    
+    setDistTone(val) {
+        this.params.distTone = val;
+        if(this.fxChain && this.fxChain.setTone) this.fxChain.setTone(val);
+    }
+    
+    setDistGain(val) {
+        this.params.distGain = val;
+        if(this.fxChain && this.fxChain.setPostGain) this.fxChain.setPostGain(val);
+    }
+
     setCutoff(val) { this.params.cutoff = val; }
     setResonance(val) { this.params.resonance = val; }
     setEnvMod(val) { this.params.envMod = val; }
     setDecay(val) { this.params.decay = val; }
+    setAccentInt(val) { this.params.accentInt = val; }
     setWaveform(val) { this.params.waveform = val; }
 
     // --- Play Note ---
@@ -77,7 +94,6 @@ class BassSynth {
         
         // 3. Oscilador
         osc.type = this.params.waveform;
-        // Drift Analógico reducido para un sonido más estable con la nueva distorsión
         osc.detune.value = (Math.random() * 4) - 2; 
 
         // 4. Portamento (Glide)
@@ -90,22 +106,36 @@ class BassSynth {
         }
         this.lastFreq = freq;
 
-        // 5. Filtro (Mantenemos BassFilter para el carácter Acid)
+        // 5. Filtro
         let filterNode = null;
         let filterDecay = 0.5;
 
         if (typeof window.BassFilter !== 'undefined') {
-            const fResult = window.BassFilter.create(this.ctx, time, this.params, duration, slide, accent);
+            // Pasamos accentInt a la creación del filtro
+            const fResult = window.BassFilter.create(
+                this.ctx, 
+                time, 
+                this.params, 
+                duration, 
+                slide, 
+                accent, 
+                this.params.accentInt
+            );
             filterNode = fResult.node;
             filterDecay = fResult.decayTime;
         } else {
-            // Fallback básico si falla el filtro externo
             filterNode = this.ctx.createBiquadFilter();
             filterNode.frequency.value = 1000; 
         }
 
         // 6. Envolvente de Volumen (VCA)
-        const peakVol = accent ? 0.85 : 0.65; 
+        // Calculamos volumen base según el parámetro global
+        const volFactor = this.params.volume / 100;
+        
+        // Si hay acento, damos un boost extra de volumen (clásico 303), 
+        // pero respetando el techo del volumen global.
+        let peakVol = 0.6 * volFactor; 
+        if (accent) peakVol = 0.85 * volFactor; 
         
         vca.gain.setValueAtTime(0, time);
         
@@ -119,7 +149,7 @@ class BassSynth {
             vca.gain.setTargetAtTime(0, time + 0.04, releaseTime / 4.5);
         }
 
-        // 7. Ruta de Señal: OSC -> FILTER -> VCA -> [DISTORTION INPUT]
+        // 7. Ruta de Señal
         osc.connect(filterNode);
         filterNode.connect(vca);
         vca.connect(this.output); 
