@@ -1,5 +1,5 @@
 /*
- * UI CONTROLLER MODULE (v30.1 - Fixes)
+ * UI CONTROLLER MODULE (v30.2 - Render Fix)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
  * Decoupled from Audio logic.
  */
@@ -46,7 +46,7 @@ class UIController {
         // MENU TRIGGERS
         this.safeClick('btn-open-menu', () => { 
             this.renderSynthMenu(); 
-            this.toggleMenu(); // Direct call
+            this.toggleMenu(); 
         });
         this.safeClick('btn-menu-close', () => this.toggleMenu());
         
@@ -61,7 +61,35 @@ class UIController {
         });
         this.safeClick('btn-close-export', () => this.toggleExportModal());
         
-        this.safeClick('btn-start-render', () => { if(window.audioEngine) window.audioEngine.renderAudio(); });
+        // RENDER BUTTON WITH VISUAL FEEDBACK
+        this.safeClick('btn-start-render', async () => { 
+            if(window.audioEngine) {
+                const btn = document.getElementById('btn-start-render');
+                
+                // Visual feedback start
+                if(btn) {
+                    btn.innerText = "WAIT...";
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.disabled = true;
+                }
+
+                // Force a small UI tick before blocking (if needed)
+                await new Promise(r => setTimeout(r, 50));
+
+                try {
+                    await window.audioEngine.renderAudio();
+                } catch (e) {
+                    console.error("Render failed", e);
+                } finally {
+                    // Visual feedback end
+                    if(btn) {
+                        btn.innerText = "RENDER";
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        btn.disabled = false;
+                    }
+                }
+            } 
+        });
         
         // Global Panic/Clear
         this.safeClick('btn-menu-panic', () => location.reload());
@@ -357,7 +385,7 @@ class UIController {
         }
     }
     
-    // --- 3. MENU & MODAL HANDLERS (MISSING FIXED) ---
+    // --- 3. MENU & MODAL HANDLERS ---
 
     toggleMenu() {
         const m = document.getElementById('main-menu');
