@@ -1,5 +1,5 @@
 /*
- * UI CONTROLLER MODULE (v30)
+ * UI CONTROLLER MODULE (v30.1 - Fixes)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
  * Decoupled from Audio logic.
  */
@@ -42,14 +42,25 @@ class UIController {
         // Header & Menu
         this.safeClick('btn-play', () => this.toggleTransport());
         this.safeClick('app-logo', () => this.toggleTransport());
-        this.safeClick('btn-open-menu', () => { this.renderSynthMenu(); window.toggleMenu(); });
-        this.safeClick('btn-menu-close', () => window.toggleMenu());
+        
+        // MENU TRIGGERS
+        this.safeClick('btn-open-menu', () => { 
+            this.renderSynthMenu(); 
+            this.toggleMenu(); // Direct call
+        });
+        this.safeClick('btn-menu-close', () => this.toggleMenu());
         
         // Menu Options
         this.safeClick('btn-toggle-ui-mode', () => this.toggleUIMode());
         this.safeClick('btn-toggle-visualizer', () => this.toggleVisualizerMode());
-        this.safeClick('btn-open-export', () => { window.toggleMenu(); window.toggleExportModal(); });
-        this.safeClick('btn-close-export', () => window.toggleExportModal());
+        
+        // EXPORT TRIGGERS
+        this.safeClick('btn-open-export', () => { 
+            this.toggleMenu(); // Close main menu
+            this.toggleExportModal(); // Open export modal
+        });
+        this.safeClick('btn-close-export', () => this.toggleExportModal());
+        
         this.safeClick('btn-start-render', () => { if(window.audioEngine) window.audioEngine.renderAudio(); });
         
         // Global Panic/Clear
@@ -58,7 +69,7 @@ class UIController {
             if(confirm("Clear Pattern?")) { 
                 window.timeMatrix.clearBlock(window.AppState.editingBlock); 
                 this.updateEditors(); 
-                window.toggleMenu(); 
+                this.toggleMenu(); 
             }
         });
 
@@ -128,7 +139,7 @@ class UIController {
         }
         this.safeClick('btn-toggle-log-menu', () => { 
             if(logPanel.classList.contains('-translate-y-full')) logBtn.click();
-            window.toggleMenu(); 
+            this.toggleMenu(); 
         });
         
         // Add Synth
@@ -345,8 +356,26 @@ class UIController {
             this.renderTrackBar();
         }
     }
+    
+    // --- 3. MENU & MODAL HANDLERS (MISSING FIXED) ---
 
-    // --- 3. VISUAL RENDER LOOP ---
+    toggleMenu() {
+        const m = document.getElementById('main-menu');
+        if(m) { 
+            m.classList.toggle('hidden'); 
+            m.classList.toggle('flex'); 
+        }
+    }
+
+    toggleExportModal() {
+        const m = document.getElementById('export-modal');
+        if(m) { 
+            m.classList.toggle('hidden'); 
+            m.classList.toggle('flex'); 
+        }
+    }
+
+    // --- 4. VISUAL RENDER LOOP ---
 
     renderLoop() {
         // Process queue from Audio Engine
@@ -389,7 +418,7 @@ class UIController {
         }
     }
 
-    // --- 4. UI UPDATES & SYNC ---
+    // --- 5. UI UPDATES & SYNC ---
 
     syncControls(viewId) {
         if(viewId === 'drum') return; // No params for drums in this UI
@@ -477,7 +506,7 @@ class UIController {
         window.timeMatrix.render(window.AppState.activeView, window.AppState.editingBlock);
     }
 
-    // --- 5. RENDER HELPERS ---
+    // --- 6. RENDER HELPERS ---
 
     renderTrackBar() {
         const c = document.getElementById('track-bar');
@@ -571,7 +600,7 @@ class UIController {
         });
     }
 
-    // --- 6. STATE TOGGLES ---
+    // --- 7. STATE TOGGLES ---
 
     setTab(v) {
         window.AppState.activeView = v;
@@ -665,7 +694,7 @@ class UIController {
         this.syncControls(window.AppState.activeView);
     }
 
-    // --- 7. UTILS ---
+    // --- 8. UTILS ---
 
     setupDigitalRepeaters() {
         const buttons = document.querySelectorAll('.dfx-btn');
