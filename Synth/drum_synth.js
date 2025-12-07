@@ -197,5 +197,8 @@ class DrumSynth {
     }
 }
 
-// Instance
+// Instance for live playback
 window.drumSynth = new DrumSynth();
+
+// Export class for offline rendering (CRITICAL FIX)
+window.DrumSynth = DrumSynth;
