@@ -1,5 +1,5 @@
 /*
- * NEURODARK 23 - NATIVE CORE v28 (UI Updates)
+ * NEURODARK 23 - NATIVE CORE v29 (Pro Audio Update)
  */
 
 const AppState = {
@@ -285,11 +285,16 @@ function updateSynthParam(param, value) {
         finalValue = ((clamped - minHz) / (maxHz - minHz)) * 100;
     }
     
+    // Mapeo extendido para los nuevos parámetros
+    if(param === 'volume') s.setVolume(finalValue);
     if(param === 'distortion') s.setDistortion(finalValue);
     if(param === 'cutoff') s.setCutoff(finalValue);
     if(param === 'resonance') s.setResonance(finalValue);
     if(param === 'envMod') s.setEnvMod(finalValue);
     if(param === 'decay') s.setDecay(finalValue);
+    if(param === 'accentInt') s.setAccentInt(finalValue);
+    if(param === 'distTone') s.setDistTone(finalValue);
+    if(param === 'distGain') s.setDistGain(finalValue);
 
     syncControlsFromSynth(AppState.activeView);
 }
@@ -305,21 +310,31 @@ function syncControlsFromSynth(viewId) {
 
     const p = s.params;
 
-    // Analog
+    // --- Analog Mode ---
+    setVal('vol-slider', p.volume);
     setVal('dist-slider', p.distortion);
     setVal('res-slider', p.resonance);
     setVal('env-slider', p.envMod);
     setVal('dec-slider', p.decay);
+    setVal('acc-slider', p.accentInt);
+    setVal('tone-slider', p.distTone);
+    setVal('dgain-slider', p.distGain);
     
+    // Conversión de Cutoff para display Hz vs %
     const cutoffHz = ((p.cutoff / 100) * 4900) + 100;
     setVal('cutoff-slider', cutoffHz);
 
-    // Digital
+    // --- Digital Mode ---
+    setVal('vol-digital', p.volume);
     setVal('dist-digital', p.distortion);
     setVal('cutoff-digital', p.cutoff);
-    setVal('res-digital', p.resonance * 5); 
+    setVal('res-digital', p.resonance * 5); // Visual 0-100%
     setVal('env-digital', p.envMod);
     setVal('dec-digital', p.decay);
+    setVal('acc-digital', p.accentInt);
+    setVal('tone-digital', p.distTone);
+    setVal('dgain-digital', p.distGain);
+
 
     const wvBtn = document.getElementById('btn-waveform');
     if(wvBtn) {
@@ -361,16 +376,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     safeClick('btn-waveform', toggleWaveform);
 
+    // --- BIND ANALOG SLIDERS ---
     const bindSlider = (id, param) => {
         const el = document.getElementById(id);
         if(el) el.oninput = (e) => updateSynthParam(param, parseInt(e.target.value));
     };
+    bindSlider('vol-slider', 'volume');
     bindSlider('dist-slider', 'distortion');
     bindSlider('cutoff-slider', 'cutoff'); 
     bindSlider('res-slider', 'resonance');
     bindSlider('env-slider', 'envMod');
     bindSlider('dec-slider', 'decay');
+    bindSlider('acc-slider', 'accentInt');
+    bindSlider('tone-slider', 'distTone');
+    bindSlider('dgain-slider', 'distGain');
 
+    // --- BIND DIGITAL INPUTS ---
     const bindDigitalInput = (id, param) => {
         const el = document.getElementById(id);
         if(el) {
@@ -390,20 +411,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     syncControlsFromSynth(AppState.activeView);
                 } 
                 else {
-                    const s = bassSynths.find(sy => sy.id === AppState.activeView);
-                    if (param === 'distortion') s.setDistortion(val);
-                    if (param === 'envMod') s.setEnvMod(val);
-                    if (param === 'decay') s.setDecay(val);
-                    syncControlsFromSynth(AppState.activeView);
+                    // Mapeo directo para el resto
+                    updateSynthParam(param, val);
                 }
             };
         }
     };
+    bindDigitalInput('vol-digital', 'volume');
     bindDigitalInput('dist-digital', 'distortion');
     bindDigitalInput('cutoff-digital', 'cutoff');
     bindDigitalInput('res-digital', 'resonance');
     bindDigitalInput('env-digital', 'envMod');
     bindDigitalInput('dec-digital', 'decay');
+    bindDigitalInput('acc-digital', 'accentInt');
+    bindDigitalInput('tone-digital', 'distTone');
+    bindDigitalInput('dgain-digital', 'distGain');
 
     window.addEventListener('stepSelect', (e) => { AppState.selectedStep = e.detail.index; updateEditors(); });
     
@@ -549,19 +571,29 @@ function setupDigitalRepeaters() {
             if(!s) return;
             
             let current = 0;
-            if(target === 'distortion') current = s.params.distortion;
+            // Get current value based on target
+            if(target === 'volume') current = s.params.volume;
+            else if(target === 'distortion') current = s.params.distortion;
             else if(target === 'envMod') current = s.params.envMod;
             else if(target === 'decay') current = s.params.decay;
+            else if(target === 'accentInt') current = s.params.accentInt;
+            else if(target === 'distTone') current = s.params.distTone;
+            else if(target === 'distGain') current = s.params.distGain;
             else if(target === 'resonance') current = s.params.resonance * 5; 
             else if(target === 'cutoff') current = s.params.cutoff; 
 
             let next = Math.max(0, Math.min(100, current + dir));
             
-            if(target === 'distortion') s.setDistortion(next);
+            // Set new value
+            if (target === 'resonance') s.setResonance(next / 5);
+            else if (target === 'cutoff') s.setCutoff(next);
+            else if(target === 'volume') s.setVolume(next);
+            else if(target === 'distortion') s.setDistortion(next);
             else if(target === 'envMod') s.setEnvMod(next);
             else if(target === 'decay') s.setDecay(next);
-            else if(target === 'resonance') s.setResonance(next / 5);
-            else if(target === 'cutoff') s.setCutoff(next);
+            else if(target === 'accentInt') s.setAccentInt(next);
+            else if(target === 'distTone') s.setDistTone(next);
+            else if(target === 'distGain') s.setDistGain(next);
             
             syncControlsFromSynth(AppState.activeView);
         };
@@ -689,12 +721,16 @@ async function renderAudio() {
         bassSynths.forEach(ls => {
             const s = new window.BassSynth(ls.id);
             s.init(offCtx, offMaster);
-            // Params are already normalized 0-100 in the live synth params
+            // Copiar todos los parámetros al contexto offline
+            s.setVolume(ls.params.volume);
             s.setDistortion(ls.params.distortion);
+            s.setDistTone(ls.params.distTone);
+            s.setDistGain(ls.params.distGain);
             s.setCutoff(ls.params.cutoff);
             s.setResonance(ls.params.resonance);
             s.setEnvMod(ls.params.envMod);
             s.setDecay(ls.params.decay);
+            s.setAccentInt(ls.params.accentInt);
             s.setWaveform(ls.params.waveform);
             offBass.push(s);
         });
