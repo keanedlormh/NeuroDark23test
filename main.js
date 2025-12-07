@@ -1,5 +1,5 @@
 /*
- * NEURODARK 23 - NATIVE CORE v27 (Restored & Fixed)
+ * NEURODARK 23 - NATIVE CORE v28 (UI Updates)
  */
 
 const AppState = {
@@ -12,7 +12,11 @@ const AppState = {
     activeView: 'bass-1',
     currentOctave: 3,
     uiMode: 'analog',
-    exportReps: 1
+    exportReps: 1,
+    // New UI States
+    panelCollapsed: false,
+    viewKeys: true,
+    viewFx: true
 };
 
 let audioCtx = null;
@@ -75,8 +79,9 @@ function bootstrap() {
         renderInstrumentTabs(); 
         renderTrackBar();
         updateEditors();
-        initPlayClock(); // Esta función ahora existe (ver abajo)
+        initPlayClock();
         setupDigitalRepeaters();
+        renderSubPanelStates(); // Initialize sub-panels
         
         // Initial Sync
         syncControlsFromSynth('bass-1');
@@ -144,7 +149,7 @@ function addBassSynth() {
     window.logToScreen(`+Synth: ${id}`);
 }
 
-// --- CLOCK & SEQUENCER (RESTORED) ---
+// --- CLOCK & SEQUENCER ---
 function initPlayClock() {
     const svg = document.getElementById('play-clock-svg');
     if(!svg) return;
@@ -335,8 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     safeClick('btn-toggle-ui-mode', toggleUIMode);
     safeClick('btn-toggle-visualizer', toggleVisualizerMode);
+    
+    // Panel & View Toggles
     safeClick('btn-minimize-panel', (e) => { e.stopPropagation(); togglePanelState(); });
     safeClick('panel-header-trigger', togglePanelState);
+    safeClick('btn-toggle-view-keys', (e) => { e.stopPropagation(); toggleSubPanel('keys'); });
+    safeClick('btn-toggle-view-fx', (e) => { e.stopPropagation(); toggleSubPanel('fx'); });
 
     const logPanel = document.getElementById('sys-log-panel');
     const logBtn = document.getElementById('btn-toggle-log-internal');
@@ -490,6 +499,42 @@ function setTab(v) {
     syncControlsFromSynth(v);
 }
 
+function toggleSubPanel(panel) {
+    if(panel === 'keys') AppState.viewKeys = !AppState.viewKeys;
+    if(panel === 'fx') AppState.viewFx = !AppState.viewFx;
+    renderSubPanelStates();
+}
+
+function renderSubPanelStates() {
+    const pKeys = document.getElementById('subpanel-keys');
+    const pFx = document.getElementById('subpanel-fx');
+    const btnKeys = document.getElementById('btn-toggle-view-keys');
+    const btnFx = document.getElementById('btn-toggle-view-fx');
+
+    const setBtnState = (btn, active) => {
+        if(!btn) return;
+        if(active) {
+            btn.classList.add('text-green-400', 'bg-green-900/20', 'border-green-500/50');
+            btn.classList.remove('text-gray-600', 'bg-transparent', 'border-gray-800');
+        } else {
+            btn.classList.remove('text-green-400', 'bg-green-900/20', 'border-green-500/50');
+            btn.classList.add('text-gray-600', 'bg-transparent', 'border-gray-800');
+        }
+    };
+
+    if(pKeys) {
+        if(AppState.viewKeys) pKeys.classList.remove('hidden');
+        else pKeys.classList.add('hidden');
+        setBtnState(btnKeys, AppState.viewKeys);
+    }
+
+    if(pFx) {
+        if(AppState.viewFx) pFx.classList.remove('hidden');
+        else pFx.classList.add('hidden');
+        setBtnState(btnFx, AppState.viewFx);
+    }
+}
+
 function setupDigitalRepeaters() {
     const buttons = document.querySelectorAll('.dfx-btn');
     if(!buttons.length) return;
@@ -551,7 +596,49 @@ function toggleWaveform() {
 }
 
 function renderTrackBar() { const c = document.getElementById('track-bar'); if(!c) return; c.innerHTML = ''; const blocks = window.timeMatrix.blocks; document.getElementById('display-total-blocks').innerText = blocks.length; document.getElementById('display-current-block').innerText = AppState.editingBlock + 1; blocks.forEach((_, i) => { const el = document.createElement('div'); el.className = `track-block ${i===AppState.editingBlock ? 'track-block-editing' : ''} ${AppState.isPlaying && i===AppState.currentPlayBlock ? 'track-block-playing' : ''}`; el.innerText = i + 1; el.onclick = () => { AppState.editingBlock = i; updateEditors(); renderTrackBar(); }; c.appendChild(el); }); }
-function updateEditors() { const bEd = document.getElementById('editor-bass'); const dEd = document.getElementById('editor-drum'); const info = document.getElementById('step-info-display'); if(info) info.innerText = `STEP ${AppState.selectedStep+1} // ${AppState.activeView.toUpperCase()}`; if(AppState.activeView === 'drum') { bEd.classList.add('hidden'); dEd.classList.remove('hidden'); renderDrumRows(); } else { bEd.classList.remove('hidden'); dEd.classList.add('hidden'); } const slideBtn = document.getElementById('btn-toggle-slide'); const accBtn = document.getElementById('btn-toggle-accent'); if(slideBtn) slideBtn.classList.remove('text-green-400', 'border-green-600'); if(accBtn) accBtn.classList.remove('text-green-400', 'border-green-600'); if(AppState.activeView !== 'drum') { const blk = window.timeMatrix.blocks[AppState.editingBlock]; const noteData = blk.tracks[AppState.activeView] ? blk.tracks[AppState.activeView][AppState.selectedStep] : null; if(noteData) { if(noteData.slide && slideBtn) slideBtn.classList.add('text-green-400', 'border-green-600'); if(noteData.accent && accBtn) accBtn.classList.add('text-green-400', 'border-green-600'); } } window.timeMatrix.selectedStep = AppState.selectedStep; window.timeMatrix.render(AppState.activeView, AppState.editingBlock); }
+
+function updateEditors() { 
+    const bEd = document.getElementById('editor-bass'); 
+    const dEd = document.getElementById('editor-drum'); 
+    const info = document.getElementById('step-info-display'); 
+    const keysBtn = document.getElementById('btn-toggle-view-keys');
+    const fxBtn = document.getElementById('btn-toggle-view-fx');
+
+    if(info) info.innerText = `STEP ${AppState.selectedStep+1} // ${AppState.activeView.toUpperCase()}`; 
+    
+    // Toggle Visibility of Views
+    if(AppState.activeView === 'drum') { 
+        bEd.classList.add('hidden'); 
+        dEd.classList.remove('hidden'); 
+        // Hide bass-specific controls in drum mode
+        if(keysBtn) keysBtn.style.display = 'none';
+        if(fxBtn) fxBtn.style.display = 'none';
+        renderDrumRows(); 
+    } else { 
+        bEd.classList.remove('hidden'); 
+        dEd.classList.add('hidden'); 
+        // Show bass-specific controls
+        if(keysBtn) keysBtn.style.display = 'block';
+        if(fxBtn) fxBtn.style.display = 'block';
+    } 
+
+    const slideBtn = document.getElementById('btn-toggle-slide'); 
+    const accBtn = document.getElementById('btn-toggle-accent'); 
+    if(slideBtn) slideBtn.classList.remove('text-green-400', 'border-green-600'); 
+    if(accBtn) accBtn.classList.remove('text-green-400', 'border-green-600'); 
+    
+    if(AppState.activeView !== 'drum') { 
+        const blk = window.timeMatrix.blocks[AppState.editingBlock]; 
+        const noteData = blk.tracks[AppState.activeView] ? blk.tracks[AppState.activeView][AppState.selectedStep] : null; 
+        if(noteData) { 
+            if(noteData.slide && slideBtn) slideBtn.classList.add('text-green-400', 'border-green-600'); 
+            if(noteData.accent && accBtn) accBtn.classList.add('text-green-400', 'border-green-600'); 
+        } 
+    } 
+    window.timeMatrix.selectedStep = AppState.selectedStep; 
+    window.timeMatrix.render(AppState.activeView, AppState.editingBlock); 
+}
+
 function renderDrumRows() { const c = document.getElementById('editor-drum'); if(!c) return; c.innerHTML = ''; const blk = window.timeMatrix.blocks[AppState.editingBlock]; const cur = blk.drums[AppState.selectedStep]; const kits = (window.drumSynth && window.drumSynth.kits) ? window.drumSynth.kits : []; kits.forEach(k => { const act = cur.includes(k.id); const b = document.createElement('button'); b.className = `w-full py-2 px-3 mb-1 border flex justify-between items-center text-[10px] ${act ? 'bg-gray-900 border-green-700 text-green-400' : 'bg-transparent border-gray-800 text-gray-500'}`; b.innerHTML = `<span>${k.name}</span><div class="w-2 h-2 rounded-full" style="background:${k.color}"></div>`; b.onclick = () => { initEngine(); if(act) cur.splice(cur.indexOf(k.id), 1); else { cur.push(k.id); window.drumSynth.play(k.id, audioCtx.currentTime); } updateEditors(); }; c.appendChild(b); }); }
 function renderSynthMenu() { const c = document.getElementById('synth-list-container'); if(!c) return; c.innerHTML = ''; bassSynths.forEach(s => { const r = document.createElement('div'); r.className = 'flex justify-between bg-black p-2 border border-gray-800 text-xs'; r.innerHTML = `<span class="text-green-500">${s.id}</span><button class="text-red-500" onclick="removeBassSynth('${s.id}')">X</button>`; c.appendChild(r); }); }
 function togglePanelState() { AppState.panelCollapsed = !AppState.panelCollapsed; const p = document.getElementById('editor-panel'); const btn = document.getElementById('btn-minimize-panel'); if(AppState.panelCollapsed) { p.classList.remove('panel-expanded'); p.classList.add('panel-collapsed'); btn.innerHTML = "&#9650;"; } else { p.classList.remove('panel-collapsed'); p.classList.add('panel-expanded'); btn.innerHTML = "&#9660;"; } }
