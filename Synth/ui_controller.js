@@ -1,5 +1,5 @@
 /*
- * UI CONTROLLER MODULE (v30.2 - Render Fix)
+ * UI CONTROLLER MODULE (v30.3 - Digital Cutoff Fix)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
  * Decoupled from Audio logic.
  */
@@ -73,7 +73,7 @@ class UIController {
                     btn.disabled = true;
                 }
 
-                // Force a small UI tick before blocking (if needed)
+                // Force a small UI tick before blocking
                 await new Promise(r => setTimeout(r, 50));
 
                 try {
@@ -293,7 +293,7 @@ class UIController {
 
         let finalValue = value;
 
-        // Cutoff mapping normalization
+        // Cutoff mapping normalization (Expects value in Hz for slider)
         if (param === 'cutoff') {
             const minHz = 100, maxHz = 5000;
             const clamped = Math.max(minHz, Math.min(maxHz, value));
@@ -317,8 +317,18 @@ class UIController {
 
     handleDigitalChange(param, value) {
         // Digital inputs for Resonance/Cutoff need special handling for visual scaling
-        if (param === 'resonance') this.handleParamChange('resonance', value / 5); // 0-100 -> 0-20
-        else this.handleParamChange(param, value);
+        if (param === 'resonance') {
+            this.handleParamChange('resonance', value / 5); // 0-100 -> 0-20
+        } 
+        else if (param === 'cutoff') {
+            // FIX: Convert 0-100 range back to Hz (100-5000) 
+            // so handleParamChange processes it correctly without resetting to 0.
+            const hz = ((value / 100) * 4900) + 100;
+            this.handleParamChange('cutoff', hz);
+        }
+        else {
+            this.handleParamChange(param, value);
+        }
     }
 
     placeNote(note) {
@@ -753,6 +763,7 @@ class UIController {
                 
                 // Call handler to update Audio and UI
                 if(target === 'resonance') this.handleDigitalChange('resonance', next);
+                else if (target === 'cutoff') this.handleDigitalChange('cutoff', next); // Also use special handling for repeaters
                 else this.handleParamChange(target, next);
             };
 
