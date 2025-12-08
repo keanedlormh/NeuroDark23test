@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeuroDark23 | v37 Drum Update</title>
+    <title>NeuroDark23 | v38 UI Update</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- SYSTEM LOGGER -->
     <script>
         window.logToScreen = function(msg, type='info') {
             const consoleEl = document.getElementById('sys-log-content');
@@ -31,7 +30,6 @@
 </head>
 <body>
 
-    <!-- LOG TERMINAL -->
     <div id="sys-log-panel" class="log-terminal">
         <div class="terminal-header">
             <span class="terminal-title">:: SYSTEM_DEBUG ::</span>
@@ -41,11 +39,10 @@
             </div>
         </div>
         <div id="sys-log-content" class="terminal-body custom-scroll">
-            <div class="log-init">System Ready. Initializing Audio Engine v37...</div>
+            <div class="log-init">System Ready. Initializing Audio Engine v38...</div>
         </div>
     </div>
 
-    <!-- MODAL: EXPORT -->
     <div id="export-modal" class="modal-overlay hidden">
         <div class="modal-window border-green">
             <h2 class="modal-header text-green">RENDER AUDIO</h2>
@@ -65,7 +62,6 @@
         </div>
     </div>
 
-    <!-- MODAL: MEMORY (CSV) -->
     <div id="memory-modal" class="modal-overlay hidden">
         <div class="modal-window border-purple modal-wide">
             <h2 class="modal-header text-purple">VIRTUAL MEMORY</h2>
@@ -93,35 +89,29 @@
         </div>
     </div>
 
-    <!-- MAIN MENU -->
     <div id="main-menu" class="modal-overlay hidden">
         <div class="menu-container">
             <h2 class="menu-logo">MENU CONFIG</h2>
             
-            <!-- GLOBAL SETTINGS -->
             <div class="menu-section">
                  <button id="btn-toggle-ui-mode" class="btn-menu-toggle">UI MODE: ANALOG</button>
                  <button id="btn-toggle-visualizer" class="btn-menu-toggle">VISUALIZER: OFF</button>
             </div>
 
-            <!-- BASS MODULES -->
             <div class="menu-section">
                 <h3 class="section-label">BASS SYNTHS</h3>
                 <div id="synth-list-container" class="list-vertical"></div>
                 <button id="btn-add-synth" class="btn-dashed">+ ADD BASS</button>
             </div>
 
-            <!-- NEW: DRUM CONFIGURATION -->
             <div class="menu-section">
                 <h3 class="section-label">DRUM CONFIGURATION</h3>
                 <div class="drum-config-header">
                     <span>CH</span><span>VARIANT</span><span>COLOR</span>
                 </div>
-                <!-- Container for dynamic drum rows (injected by JS) -->
                 <div id="drum-config-container" class="drum-config-grid custom-scroll"></div>
             </div>
 
-            <!-- SYSTEM ACTIONS -->
             <div class="menu-section vertical-stack">
                 <button id="btn-open-memory" class="btn-menu-action text-purple">VIRTUAL MEMORY</button>
                 <button id="btn-open-export" class="btn-menu-action text-green">EXPORT WAV</button>
@@ -134,7 +124,6 @@
         </div>
     </div>
 
-    <!-- APP HEADER -->
     <header class="top-bar">
         <div class="brand-group" id="app-logo">
             <div id="activity-led" class="led-status"></div>
@@ -143,11 +132,9 @@
         <button id="btn-open-menu" class="btn-icon-menu">&#9776;</button>
     </header>
 
-    <!-- WORKSPACE -->
     <div class="workspace-area custom-scroll">
         <div class="main-layout">
             
-            <!-- DASHBOARD -->
             <div class="dashboard-card">
                 <div class="dash-slot">
                     <label class="label-mini">BPM</label>
@@ -167,7 +154,6 @@
                 </div>
             </div>
 
-            <!-- CHAIN BAR -->
             <div class="chain-section">
                 <div class="chain-header">
                     <span class="label-mini">CHAIN</span>
@@ -185,27 +171,32 @@
                 <div id="track-bar" class="track-timeline custom-scroll"></div>
             </div>
 
-            <!-- TABS -->
             <div id="instrument-tabs-container" class="tabs-bar"></div>
 
-            <!-- SEQUENCER GRID -->
             <div id="matrix-container" class="step-grid"></div>
             
             <div class="spacer-bottom"></div> 
         </div>
     </div>
 
-    <!-- BOTTOM EDITOR -->
     <div id="editor-panel" class="editor-drawer expanded">
         
         <div class="drawer-header" id="panel-header-trigger">
             <span id="step-info-display" class="drawer-title">EDIT MODE</span>
             
             <div class="drawer-actions" onclick="event.stopPropagation()">
+                
+                <button id="btn-waveform" class="btn-pill">
+                    <span class="wave-symbol">~</span> SAW
+                </button>
+
+                <div class="sep-v-dark"></div>
+
                 <div class="view-toggles">
                     <button id="btn-toggle-view-keys" class="btn-pill active">KEYS</button>
                     <button id="btn-toggle-view-fx" class="btn-pill active">FX</button>
                 </div>
+                
                 <div class="sep-v-dark"></div>
                 <button id="btn-minimize-panel" class="btn-minimize">&#9660;</button>
             </div>
@@ -213,10 +204,8 @@
 
         <div class="drawer-body">
             
-            <!-- BASS EDITOR -->
             <div id="editor-bass" class="editor-content-bass custom-scroll">
                 
-                <!-- FX RACK -->
                 <div id="subpanel-fx" class="control-group">
                     <div id="fx-container-bar" class="fx-rack">
                         
@@ -249,7 +238,6 @@
                     </div>
                 </div>
 
-                <!-- KEYBOARD -->
                 <div id="subpanel-keys" class="control-group">
                     <div class="keyboard-bar">
                         <div class="octave-widget">
@@ -263,10 +251,7 @@
                             <button id="btn-toggle-accent" class="btn-mod">^ ACCENT</button>
                         </div>
 
-                        <button id="btn-waveform" class="btn-wave">
-                            <span class="wave-symbol">~</span> SAW
-                        </button>
-                    </div>
+                        </div>
 
                     <div id="piano-container" class="piano-bed">
                         <div class="keys-white">
@@ -289,12 +274,10 @@
                 </div>
             </div>
 
-            <!-- DRUM EDITOR (Dynamic Content injected by JS) -->
             <div id="editor-drum" class="editor-content-drum hidden custom-scroll"></div>
         </div>
     </div>
 
-    <!-- SCRIPTS -->
     <script src="Synth/fx_synth.js"></script>
     <script src="Synth/bass_synth.js"></script>
     <script src="Synth/drum_synth.js"></script>
