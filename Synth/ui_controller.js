@@ -1,6 +1,7 @@
 /*
- * UI CONTROLLER MODULE (v35)
- * Synchronized with new CSS and TimeMatrix
+ * UI CONTROLLER MODULE (v36 - Hotfix)
+ * Fixed: Restored missing 'setTab' function causing navigation errors.
+ * Includes Drum Grid visibility fix and semantic structure.
  */
 
 class UIController {
@@ -199,6 +200,15 @@ class UIController {
     }
 
     // --- LOGIC ---
+    
+    // !!! RESTORED FUNCTION !!!
+    setTab(v) {
+        window.AppState.activeView = v;
+        this.renderInstrumentTabs();
+        this.updateEditors();
+        this.syncControls(v);
+    }
+
     handleParamChange(param, value) {
         if(!window.audioEngine) return;
         const synth = window.audioEngine.getSynth(window.AppState.activeView);
