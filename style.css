@@ -1,6 +1,6 @@
-/* * NEURODARK 23 - STYLE CORE (v38 - Drum Grid & Logic Update)
+/* * NEURODARK 23 - STYLE CORE (v39 - UI Polish)
  * Theme: Cyberpunk Industrial / High Contrast
- * Updated for: 2-Col Drum Grid, Color Swapping, Numeric Inputs
+ * Updated: Centered Transport, Bass Toolbar, Drum Grid & Color Logic
  */
 
 :root {
@@ -13,7 +13,6 @@
     --c-cyan: #00ddff;
     
     /* --- DRUM SPECTRUM (9 Equidistant HSL) --- */
-    /* 0, 40, 80, 120, 160, 200, 240, 280, 320 */
     --c-d1: hsl(0, 100%, 60%);   /* Red */
     --c-d2: hsl(40, 100%, 50%);  /* Orange */
     --c-d3: hsl(80, 100%, 50%);  /* Lime */
@@ -111,14 +110,30 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .label-mini { font-size: 9px; color: var(--text-dim); letter-spacing: 0.15em; display: block; margin-bottom: 4px; }
 .input-bpm { border-bottom: 1px solid var(--border-mid); color: var(--c-green); font-size: 2rem; font-weight: 700; width: 80px; text-align: center; }
 .input-bpm:focus { border-color: var(--c-green); }
-.transport-center { position: relative; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; z-index: 2; }
+
+/* Transport Centering (Updated v39) */
+.transport-center { 
+    position: relative; 
+    width: 80px; height: 80px; 
+    display: flex; /* Flex centering */
+    align-items: center; 
+    justify-content: center; 
+    z-index: 2; 
+}
 .clock-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
 .btn-transport-play {
     width: 48px; height: 48px; border-radius: 50%; background: #151515; border: 1px solid var(--border-mid);
-    color: #666; font-size: 20px; transition: all 0.1s; box-shadow: 0 4px 8px rgba(0,0,0,0.4); padding-left: 3px;
+    color: #666; font-size: 20px; transition: all 0.1s; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    padding-left: 3px; /* Optical center for triangle */
+    position: relative; z-index: 10;
 }
 .btn-transport-play:hover { color: #fff; border-color: #777; }
-.btn-transport-play.playing { color: var(--c-green); border-color: var(--c-green); box-shadow: 0 0 12px var(--c-green-dim); padding-left: 0; }
+.btn-transport-play.playing { 
+    color: var(--c-green); border-color: var(--c-green); 
+    box-shadow: 0 0 12px var(--c-green-dim); 
+    padding-left: 0; /* Remove optical offset for Pause bars */
+}
 .block-counter { background: #111; border: 1px solid var(--border-dim); padding: 4px 10px; border-radius: var(--radius); font-family: monospace; font-size: 14px; }
 
 /* --- CHAIN --- */
@@ -188,6 +203,21 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 /* --- BASS EDITOR --- */
 .editor-content-bass { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
 .control-group { background: var(--bg-card); border: 1px solid var(--border-mid); padding: 10px; border-radius: 4px; }
+
+/* Bass Toolbar (New v39) */
+.bass-toolbar {
+    display: flex; gap: 8px;
+    margin-bottom: 0px; 
+}
+.btn-tool-toggle {
+    flex: 1; height: 24px;
+    background: #1a1a1a; border: 1px solid #333;
+    color: #666; font-size: 10px; font-weight: 800; border-radius: 2px;
+}
+.btn-tool-toggle.active {
+    background: var(--c-green-dim); border-color: var(--c-green); color: var(--c-green);
+}
+
 .rack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .rack-module {
     display: flex; align-items: center; gap: 8px; background: #181818;
@@ -233,63 +263,43 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .pos-1 { left: 14.28%; } .pos-2 { left: 28.57%; } .pos-3 { left: 57.14%; } .pos-4 { left: 71.42%; } .pos-5 { left: 85.71%; }
 .btn-delete-note { width: 100%; padding: 6px; background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: var(--c-red); font-size: 10px; font-weight: 800; border-radius: 3px; }
 
-/* --- DRUM EDITOR (UPDATED: 2-COL GRID) --- */
+/* --- DRUM EDITOR (2-COL GRID) --- */
 .editor-content-drum {
     padding: 16px;
     overflow-y: auto;
     display: grid; 
-    grid-template-columns: 1fr 1fr; /* Two Columns */
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
     align-content: start;
 }
-
-/* Master Vol Header */
 .drum-master-panel {
     background: #111; border: 1px solid #333; padding: 8px 12px;
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 8px; border-radius: 3px;
-    grid-column: 1 / -1; /* Spans full width */
+    grid-column: 1 / -1;
 }
 .drum-master-label { color: #888; font-weight: 800; font-size: 10px; }
-
-/* Drum Rows */
 .drum-row {
     display: flex; align-items: center; justify-content: space-between;
     width: 100%; padding: 6px 8px;
     background: #1a1a1a; border: 1px solid var(--border-dim);
     border-radius: 3px; transition: all 0.1s;
-    /* Grid item behavior implied */
 }
 .drum-row:hover { border-color: #555; background: #222; }
 .drum-row.active { background: #252525; border-color: #666; }
-
 .drum-info { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
 .drum-color-tag { width: 4px; height: 16px; border-radius: 2px; transition: all 0.2s; }
 .drum-label { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 0.05em; }
 .drum-row.active .drum-label { color: #eee; }
-
-/* Horizontal Vol Control with Inputs */
 .drum-vol-ctrl { display: flex; gap: 2px; align-items: center; margin-left: 6px; }
 .drum-vol-btn { width: 18px; height: 18px; background: #111; border: 1px solid #333; color: #666; font-size: 10px; border-radius: 2px; }
 .drum-vol-btn:active { background: #333; color: #fff; }
-
 .drum-vol-input {
-    width: 34px; 
-    text-align: center; 
-    color: var(--c-green); 
-    font-weight: bold; 
-    font-size: 11px; 
-    background: #000; 
-    border: 1px solid #222; 
-    padding: 2px 0; 
-    border-radius: 2px;
-    -moz-appearance: textfield; /* Remove Arrows FF */
+    width: 34px; text-align: center; color: var(--c-green); font-weight: bold; font-size: 11px;
+    background: #000; border: 1px solid #222; padding: 2px 0; border-radius: 2px;
+    -moz-appearance: textfield;
 }
-.drum-vol-input::-webkit-outer-spin-button,
-.drum-vol-input::-webkit-inner-spin-button {
-    -webkit-appearance: none; /* Remove Arrows Chrome */
-    margin: 0;
-}
+.drum-vol-input::-webkit-outer-spin-button, .drum-vol-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .drum-vol-input:focus { border-color: var(--c-green); }
 
 /* --- COLOR SWAP ANIMATION --- */
@@ -298,29 +308,16 @@ input { font-family: inherit; background: transparent; border: none; outline: no
     50% { opacity: 0.5; box-shadow: 0 0 10px #fff; }
     100% { opacity: 1; box-shadow: 0 0 0 transparent; }
 }
-.color-swapping {
-    animation: blink-swapping 0.6s infinite;
-    border: 1px solid #fff !important;
-    z-index: 10;
-}
+.color-swapping { animation: blink-swapping 0.6s infinite; border: 1px solid #fff !important; z-index: 10; }
 
-/* --- CONFIG MENU UPDATES --- */
+/* --- CONFIG MENU --- */
 .menu-group-header {
-    background: #222;
-    padding: 8px 12px;
-    border: 1px solid #333;
-    font-size: 10px;
-    font-weight: 800;
-    color: #ccc;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
+    background: #222; padding: 8px 12px; border: 1px solid #333;
+    font-size: 10px; font-weight: 800; color: #ccc; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
 }
 .menu-group-header:hover { background: #2a2a2a; color: #fff; }
 .menu-group-content.collapsed { display: none; }
-
 .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
 .modal-window, .menu-container { background: #1a1a1a; border: 1px solid #444; padding: 24px; width: 340px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); position: relative; max-height: 90vh; overflow-y: auto; }
 .modal-wide { width: 90%; max-width: 600px; }
