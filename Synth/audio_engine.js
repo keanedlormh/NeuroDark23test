@@ -1,7 +1,7 @@
 /*
- * AUDIO ENGINE MODULE (v37 - Drum Mix Support)
+ * AUDIO ENGINE MODULE (v38 - Robust Offline Export)
  * Handles AudioContext, Scheduling, Synthesis, and Rendering.
- * Updated to support Drum Volume Mixing & Variants in Offline Render.
+ * Updated: Fixed Offline Export download trigger and deep state cloning.
  */
 
 class AudioEngine {
@@ -150,7 +150,6 @@ class AudioEngine {
 
         // Play Drums
         if (data.drums && window.drumSynth) {
-            // Note: Timematrix v37 will send channel IDs (0-8) here
             data.drums.forEach(id => window.drumSynth.play(id, time));
         }
 
@@ -192,9 +191,10 @@ class AudioEngine {
         if (window.drumSynth) window.drumSynth.play(drumId, this.ctx.currentTime);
     }
 
+    // --- OFFLINE RENDER (UPDATED) ---
     async renderAudio() {
         if (window.AppState.isPlaying) this.stopPlayback();
-        if(window.logToScreen) window.logToScreen("Starting Offline Render...");
+        if(window.logToScreen) window.logToScreen("Initializing Offline Render...");
         
         try {
             const stepsPerBlock = window.timeMatrix.totalSteps;
@@ -204,21 +204,31 @@ class AudioEngine {
             
             const secPerStep = (60.0 / bpm) / 4;
             const totalSteps = stepsPerBlock * totalBlocks * reps;
-            const duration = totalSteps * secPerStep + 2.0;
+            const duration = totalSteps * secPerStep + 2.0; // +2s tail
 
             const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+            // 2 channels, length in samples, sample rate
             const offCtx = new OfflineCtx(2, 44100 * duration, 44100);
+            
+            // Master Compressor for Offline
+            const offCompressor = offCtx.createDynamicsCompressor();
+            offCompressor.threshold.value = -3;
+            offCompressor.ratio.value = 12;
             
             const offMaster = offCtx.createGain();
             offMaster.gain.value = 0.6;
-            offMaster.connect(offCtx.destination);
+            
+            offMaster.connect(offCompressor);
+            offCompressor.connect(offCtx.destination);
 
             // 1. CLONE BASS SYNTHS
             const offBassSynths = [];
             this.bassSynths.forEach(liveSynth => {
                 const s = new window.BassSynth(liveSynth.id);
-                s.init(offCtx, offMaster);
+                s.init(offCtx, offMaster); // Connect to offline master
                 s.params = { ...liveSynth.params };
+                
+                // Ensure FX params are applied to the new offline nodes
                 if(s.fxChain) {
                     s.setDistortion(s.params.distortion);
                     s.setDistTone(s.params.distTone);
@@ -227,23 +237,24 @@ class AudioEngine {
                 offBassSynths.push(s);
             });
 
-            // 2. CLONE DRUM SYNTH (NEW)
+            // 2. CLONE DRUM SYNTH
+            // Must create a new instance attached to offCtx
             const offDrum = new window.DrumSynth();
             offDrum.init(offCtx, offMaster);
             
-            // Sync Drum State (Master Vol + Channel Configs)
             if (window.drumSynth) {
                 offDrum.setMasterVolume(window.drumSynth.masterVolume);
                 
+                // Deep copy channel states (Volume & Variant)
                 window.drumSynth.channels.forEach(ch => {
-                    // Copy Volume
                     offDrum.setChannelVolume(ch.id, ch.volume);
-                    // Copy Variant
                     offDrum.setChannelVariant(ch.id, ch.variant);
                 });
             }
 
-            // 3. RENDER LOOP
+            // 3. SCHEDULE EVENTS (Offline Timeline)
+            if(window.logToScreen) window.logToScreen("Scheduling Events...");
+            
             let t = 0.0;
             for (let r = 0; r < reps; r++) {
                 for (let b = 0; b < totalBlocks; b++) {
@@ -251,6 +262,7 @@ class AudioEngine {
                     for (let s = 0; s < stepsPerBlock; s++) {
                         // Drums
                         if (blk.drums[s]) {
+                            // Note: blk.drums contains Channel IDs (indices)
                             blk.drums[s].forEach(id => offDrum.play(id, t));
                         }
                         // Bass
@@ -268,20 +280,36 @@ class AudioEngine {
                 }
             }
 
+            // 4. RENDER
+            if(window.logToScreen) window.logToScreen("Rendering Audio Buffer...");
             const renderedBuffer = await offCtx.startRendering();
+            
+            if(window.logToScreen) window.logToScreen("Encoding WAV...");
             const wavBlob = this.bufferToWave(renderedBuffer, renderedBuffer.length);
             
+            // 5. TRIGGER DOWNLOAD (Robust Method)
             const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
+            a.style.display = 'none';
             a.href = url;
             a.download = `ND23_Render_${Date.now()}.wav`;
+            
+            // Critical: Append to body for browser compatibility
+            document.body.appendChild(a);
             a.click();
             
-            if(window.logToScreen) window.logToScreen("Render Complete");
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+            
+            if(window.logToScreen) window.logToScreen("Download Started [OK]");
             return true;
 
         } catch (e) {
             console.error(e);
+            if(window.logToScreen) window.logToScreen("Render Error: " + e.message, 'error');
             return false;
         }
     }
@@ -294,22 +322,39 @@ class AudioEngine {
             channels = [], i, sample,
             offset = 0, pos = 0;
 
+        // Header Helper
         function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
         function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
 
-        setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
-        setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
-        setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
-        setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164);
-        setUint32(length - pos - 4);
+        // RIFF Chunk
+        setUint32(0x46464952); // "RIFF"
+        setUint32(length - 8); // file length - 8
+        setUint32(0x45564157); // "WAVE"
 
+        // fmt Chunk
+        setUint32(0x20746d66); // "fmt "
+        setUint32(16); // length = 16
+        setUint16(1); // PCM (uncompressed)
+        setUint16(numOfChan);
+        setUint32(abuffer.sampleRate);
+        setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+        setUint16(numOfChan * 2); // block-align
+        setUint16(16); // 16-bit
+
+        // data Chunk
+        setUint32(0x61746164); // "data"
+        setUint32(length - pos - 4); // chunk length
+
+        // Interleave channels
         for(i = 0; i < numOfChan; i++) channels.push(abuffer.getChannelData(i));
 
         while(pos < length) {
             for(i = 0; i < numOfChan; i++) {
+                // Clamp and convert float to 16-bit PCM
                 sample = Math.max(-1, Math.min(1, channels[i][offset])); 
                 sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; 
-                view.setInt16(pos, sample, true); pos += 2;
+                view.setInt16(pos, sample, true); 
+                pos += 2;
             }
             offset++;
         }
