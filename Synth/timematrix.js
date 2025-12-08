@@ -1,7 +1,7 @@
 /**
- * TIME MATRIX MODULE (v38 - Color Swap Support)
+ * TIME MATRIX MODULE (v37 - Deep Drum Integration)
  * Handles Grid Data, Block Management, and Complex CSV I/O.
- * Ensures persistence of Drum Color configurations.
+ * Supports Dynamic Drum Channels and Configuration Persistence.
  */
 
 class TimeMatrix {
@@ -99,7 +99,7 @@ class TimeMatrix {
         return { tracks: b.tracks, drums: b.drums[step]||[] };
     }
 
-    // --- CSV EXPORT SYSTEM (v38) ---
+    // --- CSV EXPORT SYSTEM (v37) ---
     exportToCSV() {
         if(!window.audioEngine) return "";
         const bpm = window.AppState.bpm;
@@ -136,14 +136,15 @@ class TimeMatrix {
             csv += row + "\n";
         });
 
-        // 3. DRUMS TRACK (Enhanced for Color Swap)
+        // 3. DRUMS TRACK (Enhanced)
         if (drumSynth) {
             // Header: drums:MasterVol:Count|Ch1Data|Ch2Data...
             // ChData: Type-Variant-Vol-ColorID
             let drumConfig = `drums:${drumSynth.masterVolume}:${drumSynth.channels.length}`;
             
             drumSynth.channels.forEach(ch => {
-                // Important: Save the ColorID so swaps persist
+                // Assuming colorID corresponds to channel ID by default unless swapped
+                // For simplicity, we use ID as color ID if not explicitly stored
                 const colId = ch.colorId !== undefined ? ch.colorId : ch.id;
                 drumConfig += `|${ch.type}-${ch.variant}-${ch.volume}-${colId}`;
             });
@@ -167,7 +168,7 @@ class TimeMatrix {
         return csv;
     }
 
-    // --- CSV IMPORT SYSTEM (v38) ---
+    // --- CSV IMPORT SYSTEM (v37) ---
     importFromCSV(csvData) {
         if(!csvData || !window.audioEngine) return false;
 
@@ -201,26 +202,29 @@ class TimeMatrix {
                     const mainHeader = parts[0].split(':'); // drums:Vol:Count
                     
                     const masterVol = parseInt(mainHeader[1]);
-                    
+                    const chCount = parseInt(mainHeader[2]); // Not strictly used if we rely on pipe split length
+
                     // Apply to DrumSynth
                     if(window.drumSynth) {
                         window.drumSynth.setMasterVolume(masterVol);
                         
                         // Parse Channel Configs
+                        // parts[1] to parts[N] are channels
                         for(let c=1; c<parts.length; c++) {
                             const chData = parts[c].replace('[','').replace(']','').split('-');
                             // Format: Type-Variant-Vol-ColorID
                             const chIdx = c - 1;
                             if(window.drumSynth.channels[chIdx]) {
+                                // We don't overwrite Type/Name to keep mapping safe, just params
+                                // Or we could dynamic re-type if needed. Keeping simple:
                                 const variant = parseInt(chData[1]);
                                 const vol = parseInt(chData[2]);
                                 const colId = parseInt(chData[3]);
                                 
                                 window.drumSynth.setChannelVariant(chIdx, variant);
                                 window.drumSynth.setChannelVolume(chIdx, vol);
-                                
-                                // Restore Color ID
-                                if(!isNaN(colId)) {
+                                // Set Color if supported (future proofing)
+                                if(window.drumSynth.channels[chIdx].colorId !== undefined) {
                                     window.drumSynth.channels[chIdx].colorId = colId;
                                 }
                             }
@@ -345,7 +349,6 @@ class TimeMatrix {
                 const ch = channels[chId];
                 // Only draw if channel is active (variant > 0)
                 if (ch && ch.variant > 0) {
-                    // Use colorId for swap logic
                     const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
                     const c = colors[colIndex % colors.length] || '#fff';
                     html += `<div class="matrix-drum-dot" style="background-color:${c}; box-shadow: 0 0 4px ${c};"></div>`;
