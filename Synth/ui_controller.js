@@ -1,7 +1,7 @@
 /*
- * UI CONTROLLER MODULE (v31 - Virtual Memory Update)
+ * UI CONTROLLER MODULE (v31.1 - CSV & Memory Patch)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
- * Includes CSV Import/Export logic.
+ * Includes Virtual Memory (CSV) logic and Audio Engine Sync.
  */
 
 class UIController {
@@ -24,7 +24,7 @@ class UIController {
         // Start Visual Loop
         this.renderLoop();
         
-        window.logToScreen("UI Controller Initialized");
+        if(window.logToScreen) window.logToScreen("UI Controller Initialized");
     }
 
     // --- 1. EVENT BINDING ---
@@ -61,59 +61,73 @@ class UIController {
         });
         this.safeClick('btn-close-export', () => this.toggleExportModal());
 
-        // MEMORY TRIGGERS (CSV)
+        // --- NEW: MEMORY TRIGGERS (CSV) ---
         this.safeClick('btn-open-memory', () => {
             this.toggleMenu();
             this.toggleMemoryModal();
         });
         this.safeClick('btn-close-memory', () => this.toggleMemoryModal());
 
-        // CSV ACTIONS
+        // --- NEW: CSV ACTIONS ---
+        
+        // 1. GENERATE CSV (Export to Text Area)
         this.safeClick('btn-gen-csv', () => {
             if(window.timeMatrix) {
                 const csvData = window.timeMatrix.exportToCSV();
                 const area = document.getElementById('csv-io-area');
                 if(area) area.value = csvData;
-                window.logToScreen("CSV Generated in Buffer");
+                if(window.logToScreen) window.logToScreen("CSV Generated in Buffer");
             }
         });
 
+        // 2. LOAD FROM TEXT (Import from Text Area)
         this.safeClick('btn-load-csv', () => {
             const area = document.getElementById('csv-io-area');
             if(area && window.timeMatrix) {
+                // A. Import Data to Matrix
                 const success = window.timeMatrix.importFromCSV(area.value);
+                
                 if(success) {
-                    // Full UI Refresh
+                    // B. Sync Audio Engine (CRITICAL STEP)
+                    if(window.audioEngine && typeof window.audioEngine.syncWithMatrix === 'function') {
+                        window.audioEngine.syncWithMatrix(window.timeMatrix);
+                    } else {
+                        console.warn("AudioEngine.syncWithMatrix not found. Please update audio_engine.js");
+                    }
+
+                    // C. Reset UI State
                     window.AppState.editingBlock = 0;
                     window.AppState.selectedStep = 0;
                     
-                    // Re-sync synths (if new ones were created/deleted)
-                    if(window.audioEngine) window.audioEngine.syncWithMatrix(window.timeMatrix);
-                    
+                    // D. Render Everything
                     this.renderInstrumentTabs();
                     this.renderTrackBar();
                     this.updateEditors();
                     this.renderSynthMenu();
                     
-                    // Set active view to first available synth or drums
-                    if(window.audioEngine.bassSynths.length > 0) {
+                    // E. Set active view
+                    if(window.audioEngine && window.audioEngine.bassSynths.length > 0) {
                         this.setTab(window.audioEngine.bassSynths[0].id);
                     } else {
                         this.setTab('drum');
                     }
 
-                    window.logToScreen("CSV Loaded Successfully");
-                    this.toggleMemoryModal(); // Auto close on success
+                    if(window.logToScreen) window.logToScreen("CSV Loaded Successfully");
+                    // Auto close modal on success
+                    this.toggleMemoryModal(); 
                 } else {
-                    window.logToScreen("CSV Import Failed: Invalid Format", 'error');
+                    if(window.logToScreen) window.logToScreen("CSV Import Failed: Invalid Format", 'error');
                 }
             }
         });
 
-        // CSV FILE HANDLING
+        // 3. DOWNLOAD CSV FILE
         this.safeClick('btn-download-csv', () => {
             const content = document.getElementById('csv-io-area').value;
-            if(!content) { window.logToScreen("Buffer Empty", 'warn'); return; }
+            if(!content) { 
+                if(window.logToScreen) window.logToScreen("Buffer Empty", 'warn'); 
+                return; 
+            }
             
             const blob = new Blob([content], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -124,6 +138,7 @@ class UIController {
             URL.revokeObjectURL(url);
         });
 
+        // 4. UPLOAD CSV FILE
         const fileInput = document.getElementById('file-upload-csv');
         if(fileInput) {
             fileInput.addEventListener('change', (e) => {
@@ -145,7 +160,7 @@ class UIController {
             });
         }
         
-        // RENDER BUTTON WITH VISUAL FEEDBACK
+        // RENDER BUTTON (AUDIO)
         this.safeClick('btn-start-render', async () => { 
             if(window.audioEngine) {
                 const btn = document.getElementById('btn-start-render');
@@ -195,14 +210,16 @@ class UIController {
             }
         });
         this.safeClick('btn-mem-copy', () => { 
-            if(window.timeMatrix.copyToClipboard(window.AppState.editingBlock)) window.logToScreen("PATTERN COPIED"); 
+            if(window.timeMatrix.copyToClipboard(window.AppState.editingBlock)) {
+                if(window.logToScreen) window.logToScreen("PATTERN COPIED"); 
+            }
         });
         this.safeClick('btn-mem-paste', () => { 
             if(window.timeMatrix.pasteFromClipboard(window.AppState.editingBlock)) { 
                 window.AppState.editingBlock++; 
                 this.updateEditors(); 
                 this.renderTrackBar(); 
-                window.logToScreen("PATTERN PASTED"); 
+                if(window.logToScreen) window.logToScreen("PATTERN PASTED"); 
             }
         });
         this.safeClick('btn-move-left', () => { 
@@ -256,7 +273,7 @@ class UIController {
                     this.renderSynthMenu();
                     this.renderInstrumentTabs();
                     this.setTab(s.id);
-                    window.logToScreen(`Added ${s.id}`);
+                    if(window.logToScreen) window.logToScreen(`Added ${s.id}`);
                 }
             }
         });
@@ -492,7 +509,6 @@ class UIController {
         if(m) {
             m.classList.toggle('hidden');
             m.classList.toggle('flex');
-            // Reset text area on open if desired, or leave it to show state
         }
     }
 
