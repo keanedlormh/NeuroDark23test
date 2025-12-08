@@ -1,7 +1,7 @@
 /**
- * TIME MATRIX MODULE (v35 - Visual Fixes)
- * Handles Grid Data and Rendering.
- * Fixed: Drum dots visibility and Tailwind removal.
+ * TIME MATRIX MODULE (v37 - Deep Drum Integration)
+ * Handles Grid Data, Block Management, and Complex CSV I/O.
+ * Supports Dynamic Drum Channels and Configuration Persistence.
  */
 
 class TimeMatrix {
@@ -13,7 +13,7 @@ class TimeMatrix {
         this.selectedStep = 0;
         this.clipboard = null;
         
-        // Note Mapping
+        // Note Mapping for CSV
         this.noteMapRev = ['-', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         this.noteMap = {
             'C':1, 'C#':2, 'D':3, 'D#':4, 'E':5, 'F':6, 
@@ -99,17 +99,20 @@ class TimeMatrix {
         return { tracks: b.tracks, drums: b.drums[step]||[] };
     }
 
-    // --- CSV EXPORT ---
+    // --- CSV EXPORT SYSTEM (v37) ---
     exportToCSV() {
         if(!window.audioEngine) return "";
         const bpm = window.AppState.bpm;
         const totalStepsGlobal = this.blocks.length * this.totalSteps;
         const synths = window.audioEngine.bassSynths;
+        const drumSynth = window.drumSynth;
         
+        // 1. HEADER
         let csv = `${bpm}-${totalStepsGlobal}-${synths.length}`;
         for(let i=1; i<=totalStepsGlobal; i++) csv += `,${i}`;
         csv += "\n";
 
+        // 2. BASS TRACKS
         synths.forEach(synth => {
             const p = synth.params;
             const waveInt = p.waveform === 'square' ? 1 : 0;
@@ -133,24 +136,39 @@ class TimeMatrix {
             csv += row + "\n";
         });
 
-        let drumRow = `drums:7`;
-        const drumOrder = ['kick', 'snare', 'clap', 'hat', 'ohat', 'tom', 'htom'];
-        
-        this.blocks.forEach(block => {
-            for(let s=0; s<this.totalSteps; s++) {
-                const dStep = block.drums[s] || [];
-                let binary = "";
-                drumOrder.forEach(dId => {
-                    binary += dStep.includes(dId) ? "1" : "0";
-                });
-                drumRow += `,${binary}`;
-            }
-        });
-        csv += drumRow;
+        // 3. DRUMS TRACK (Enhanced)
+        if (drumSynth) {
+            // Header: drums:MasterVol:Count|Ch1Data|Ch2Data...
+            // ChData: Type-Variant-Vol-ColorID
+            let drumConfig = `drums:${drumSynth.masterVolume}:${drumSynth.channels.length}`;
+            
+            drumSynth.channels.forEach(ch => {
+                // Assuming colorID corresponds to channel ID by default unless swapped
+                // For simplicity, we use ID as color ID if not explicitly stored
+                const colId = ch.colorId !== undefined ? ch.colorId : ch.id;
+                drumConfig += `|${ch.type}-${ch.variant}-${ch.volume}-${colId}`;
+            });
+
+            let drumRow = drumConfig;
+            
+            this.blocks.forEach(block => {
+                for(let s=0; s<this.totalSteps; s++) {
+                    const dStep = block.drums[s] || [];
+                    let binary = "";
+                    // Write binary for ALL channels (0-8)
+                    drumSynth.channels.forEach(ch => {
+                        binary += dStep.includes(ch.id) ? "1" : "0";
+                    });
+                    drumRow += `,${binary}`;
+                }
+            });
+            csv += drumRow;
+        }
+
         return csv;
     }
 
-    // --- CSV IMPORT ---
+    // --- CSV IMPORT SYSTEM (v37) ---
     importFromCSV(csvData) {
         if(!csvData || !window.audioEngine) return false;
 
@@ -169,6 +187,7 @@ class TimeMatrix {
             const bpmInput = document.getElementById('bpm-input');
             if(bpmInput) bpmInput.value = bpm;
 
+            // Reset Matrix
             this.blocks = [];
             const blocksNeeded = Math.ceil(totalStepsGlobal / this.totalSteps);
             for(let i=0; i<blocksNeeded; i++) this.addBlock();
@@ -177,22 +196,63 @@ class TimeMatrix {
                 const cells = lines[i].split(',');
                 const configCell = cells[0]; 
                 
+                // --- DRUMS PARSING ---
                 if(configCell.startsWith('drums')) {
-                    const drumOrder = ['kick', 'snare', 'clap', 'hat', 'ohat', 'tom', 'htom'];
+                    const parts = configCell.split('|');
+                    const mainHeader = parts[0].split(':'); // drums:Vol:Count
+                    
+                    const masterVol = parseInt(mainHeader[1]);
+                    const chCount = parseInt(mainHeader[2]); // Not strictly used if we rely on pipe split length
+
+                    // Apply to DrumSynth
+                    if(window.drumSynth) {
+                        window.drumSynth.setMasterVolume(masterVol);
+                        
+                        // Parse Channel Configs
+                        // parts[1] to parts[N] are channels
+                        for(let c=1; c<parts.length; c++) {
+                            const chData = parts[c].replace('[','').replace(']','').split('-');
+                            // Format: Type-Variant-Vol-ColorID
+                            const chIdx = c - 1;
+                            if(window.drumSynth.channels[chIdx]) {
+                                // We don't overwrite Type/Name to keep mapping safe, just params
+                                // Or we could dynamic re-type if needed. Keeping simple:
+                                const variant = parseInt(chData[1]);
+                                const vol = parseInt(chData[2]);
+                                const colId = parseInt(chData[3]);
+                                
+                                window.drumSynth.setChannelVariant(chIdx, variant);
+                                window.drumSynth.setChannelVolume(chIdx, vol);
+                                // Set Color if supported (future proofing)
+                                if(window.drumSynth.channels[chIdx].colorId !== undefined) {
+                                    window.drumSynth.channels[chIdx].colorId = colId;
+                                }
+                            }
+                        }
+                    }
+
+                    // Parse Grid
                     for(let stepGlobal=0; stepGlobal < totalStepsGlobal; stepGlobal++) {
                         const binary = cells[stepGlobal + 1];
                         if(!binary) continue;
+
                         const blockIdx = Math.floor(stepGlobal / this.totalSteps);
                         const stepIdx = stepGlobal % this.totalSteps;
+
                         if(this.blocks[blockIdx]) {
                             const activeDrums = [];
+                            // Map bits to Channel IDs
                             for(let bit=0; bit<binary.length; bit++) {
-                                if(binary[bit] === '1' && drumOrder[bit]) activeDrums.push(drumOrder[bit]);
+                                if(binary[bit] === '1') {
+                                    activeDrums.push(bit); // Store Channel ID (Index)
+                                }
                             }
                             this.blocks[blockIdx].drums[stepIdx] = activeDrums;
                         }
                     }
-                } else if(configCell.includes(':')) {
+                } 
+                // --- BASS PARSING ---
+                else if(configCell.includes(':')) {
                     const parts = configCell.split(':');
                     const id = parts[0];
                     const paramsStr = parts[1];
@@ -277,17 +337,22 @@ class TimeMatrix {
         }
     }
 
-    // --- FIX: VISUALIZACIÓN DRUMS ---
     drawDrums(el, drums, i) {
         el.classList.remove('has-bass');
         if(drums && drums.length) {
             let html = '<div class="matrix-drum-container">';
-            const kits = (window.drumSynth && window.drumSynth.kits) ? window.drumSynth.kits : [];
-            drums.forEach(id => {
-                const k = kits.find(x=>x.id===id);
-                const c = k ? k.color : '#fff';
-                // Genera DIVs con clase matrix-drum-dot
-                html += `<div class="matrix-drum-dot" style="background-color:${c}; box-shadow: 0 0 4px ${c};"></div>`;
+            // Use window.drumSynth.channels to get active state and colors
+            const channels = window.drumSynth ? window.drumSynth.channels : [];
+            const colors = window.drumSynth ? window.drumSynth.channelColors : [];
+            
+            drums.forEach(chId => {
+                const ch = channels[chId];
+                // Only draw if channel is active (variant > 0)
+                if (ch && ch.variant > 0) {
+                    const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
+                    const c = colors[colIndex % colors.length] || '#fff';
+                    html += `<div class="matrix-drum-dot" style="background-color:${c}; box-shadow: 0 0 4px ${c};"></div>`;
+                }
             });
             el.innerHTML = html + '</div>';
         } else {
