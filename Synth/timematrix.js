@@ -1,7 +1,7 @@
 /**
- * TIME MATRIX MODULE (v34 - Semantic Rendering)
- * Handles Grid Data, Block Management, and CSV I/O.
- * Optimized for Custom CSS Rendering.
+ * TIME MATRIX MODULE (v35 - Visual Fixes)
+ * Handles Grid Data and Rendering.
+ * Fixed: Drum dots visibility and Tailwind removal.
  */
 
 class TimeMatrix {
@@ -13,7 +13,7 @@ class TimeMatrix {
         this.selectedStep = 0;
         this.clipboard = null;
         
-        // Note Mapping for CSV
+        // Note Mapping
         this.noteMapRev = ['-', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         this.noteMap = {
             'C':1, 'C#':2, 'D':3, 'D#':4, 'E':5, 'F':6, 
@@ -23,10 +23,18 @@ class TimeMatrix {
         this.addBlock();
     }
 
-    init() { this.container = document.getElementById(this.containerId); return !!this.container; }
+    init() { 
+        this.container = document.getElementById(this.containerId); 
+        return !!this.container; 
+    }
     
-    registerTrack(id) { this.blocks.forEach(b=>{ if(!b.tracks[id]) b.tracks[id] = new Array(this.totalSteps).fill(null); }); }
-    removeTrack(id) { this.blocks.forEach(b=>delete b.tracks[id]); }
+    registerTrack(id) { 
+        this.blocks.forEach(b=>{ if(!b.tracks[id]) b.tracks[id] = new Array(this.totalSteps).fill(null); }); 
+    }
+    
+    removeTrack(id) { 
+        this.blocks.forEach(b=>delete b.tracks[id]); 
+    }
     
     addBlock() {
         const newTracks = {};
@@ -91,7 +99,7 @@ class TimeMatrix {
         return { tracks: b.tracks, drums: b.drums[step]||[] };
     }
 
-    // --- CSV EXPORT SYSTEM ---
+    // --- CSV EXPORT ---
     exportToCSV() {
         if(!window.audioEngine) return "";
         const bpm = window.AppState.bpm;
@@ -142,7 +150,7 @@ class TimeMatrix {
         return csv;
     }
 
-    // --- CSV IMPORT SYSTEM ---
+    // --- CSV IMPORT ---
     importFromCSV(csvData) {
         if(!csvData || !window.audioEngine) return false;
 
@@ -171,26 +179,20 @@ class TimeMatrix {
                 
                 if(configCell.startsWith('drums')) {
                     const drumOrder = ['kick', 'snare', 'clap', 'hat', 'ohat', 'tom', 'htom'];
-                    
                     for(let stepGlobal=0; stepGlobal < totalStepsGlobal; stepGlobal++) {
                         const binary = cells[stepGlobal + 1];
                         if(!binary) continue;
-
                         const blockIdx = Math.floor(stepGlobal / this.totalSteps);
                         const stepIdx = stepGlobal % this.totalSteps;
-
                         if(this.blocks[blockIdx]) {
                             const activeDrums = [];
                             for(let bit=0; bit<binary.length; bit++) {
-                                if(binary[bit] === '1' && drumOrder[bit]) {
-                                    activeDrums.push(drumOrder[bit]);
-                                }
+                                if(binary[bit] === '1' && drumOrder[bit]) activeDrums.push(drumOrder[bit]);
                             }
                             this.blocks[blockIdx].drums[stepIdx] = activeDrums;
                         }
                     }
-                } 
-                else if(configCell.includes(':')) {
+                } else if(configCell.includes(':')) {
                     const parts = configCell.split(':');
                     const id = parts[0];
                     const paramsStr = parts[1];
@@ -200,38 +202,28 @@ class TimeMatrix {
                     if(!synth) synth = window.audioEngine.addBassSynth(id);
 
                     if(synth && pVals.length >= 10) {
-                        synth.setVolume(pVals[0]);
-                        synth.setDistortion(pVals[1]);
-                        synth.setDistTone(pVals[2]);
-                        synth.setDistGain(pVals[3]);
-                        synth.setCutoff(pVals[4]);
-                        synth.setResonance(pVals[5]);
-                        synth.setEnvMod(pVals[6]);
-                        synth.setDecay(pVals[7]);
+                        synth.setVolume(pVals[0]); synth.setDistortion(pVals[1]);
+                        synth.setDistTone(pVals[2]); synth.setDistGain(pVals[3]);
+                        synth.setCutoff(pVals[4]); synth.setResonance(pVals[5]);
+                        synth.setEnvMod(pVals[6]); synth.setDecay(pVals[7]);
                         synth.setAccentInt(pVals[8]);
                         synth.setWaveform(pVals[9] === 1 ? 'square' : 'sawtooth');
                     }
-
                     this.registerTrack(id);
 
                     for(let stepGlobal=0; stepGlobal < totalStepsGlobal; stepGlobal++) {
                         const noteData = cells[stepGlobal + 1];
                         if(!noteData || noteData === '0') continue;
-
                         const blockIdx = Math.floor(stepGlobal / this.totalSteps);
                         const stepIdx = stepGlobal % this.totalSteps;
-
                         const nParts = noteData.split('-');
                         if(nParts.length === 4) {
                             const noteInt = parseInt(nParts[0]);
                             const noteChar = this.noteMapRev[noteInt];
-                            
                             if(this.blocks[blockIdx] && noteChar) {
                                 this.blocks[blockIdx].tracks[id][stepIdx] = {
-                                    note: noteChar,
-                                    octave: parseInt(nParts[1]),
-                                    slide: nParts[2] === '1',
-                                    accent: nParts[3] === '1'
+                                    note: noteChar, octave: parseInt(nParts[1]),
+                                    slide: nParts[2] === '1', accent: nParts[3] === '1'
                                 };
                             }
                         }
@@ -241,13 +233,11 @@ class TimeMatrix {
             return true;
         } catch(e) {
             console.error("CSV Import Error:", e);
-            if(window.logToScreen) window.logToScreen("Import Error: " + e, 'error');
             return false;
         }
     }
 
-    // --- RENDER METHODS ---
-
+    // --- RENDER ---
     render(activeView, blockIndex) {
         if (!this.init()) return;
         this.container.innerHTML = '';
@@ -258,15 +248,12 @@ class TimeMatrix {
 
         for (let i = 0; i < this.totalSteps; i++) {
             const el = document.createElement('div');
-            el.className = 'step-box'; // CSS Base Class
+            el.className = 'step-box';
             
-            if (i === this.selectedStep) {
-                el.classList.add('step-selected');
-            }
+            if (i === this.selectedStep) el.classList.add('step-selected');
             
-            if (activeView === 'drum') {
-                this.drawDrums(el, block.drums[i], i);
-            } else {
+            if (activeView === 'drum') this.drawDrums(el, block.drums[i], i);
+            else {
                 if(!block.tracks[activeView]) this.registerTrack(activeView);
                 this.drawNote(el, block.tracks[activeView][i], i);
             }
@@ -290,16 +277,16 @@ class TimeMatrix {
         }
     }
 
+    // --- FIX: VISUALIZACIÓN DRUMS ---
     drawDrums(el, drums, i) {
         el.classList.remove('has-bass');
         if(drums && drums.length) {
-            // FIX: Using new semantic classes for dots
             let html = '<div class="matrix-drum-container">';
             const kits = (window.drumSynth && window.drumSynth.kits) ? window.drumSynth.kits : [];
             drums.forEach(id => {
                 const k = kits.find(x=>x.id===id);
                 const c = k ? k.color : '#fff';
-                // Generates a proper DIV that CSS can style
+                // Genera DIVs con clase matrix-drum-dot
                 html += `<div class="matrix-drum-dot" style="background-color:${c}; box-shadow: 0 0 4px ${c};"></div>`;
             });
             el.innerHTML = html + '</div>';
