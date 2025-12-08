@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeuroDark23 | FX Core</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>NeuroDark23 | FX Core (Offline)</title>
     <link rel="stylesheet" href="style.css">
     
     <script>
@@ -26,8 +25,9 @@
             window.logToScreen(`CRITICAL: ${msg} (L${line})`, 'error');
             const p = document.getElementById('sys-log-panel');
             if(p) { 
-                p.classList.remove('-translate-y-full'); 
-                p.classList.add('translate-y-0');
+                // La lógica de clases del JS se mantendrá, definiremos las transiciones en CSS
+                p.classList.remove('log-hidden'); 
+                p.classList.add('log-visible');
             }
             return false;
         };
@@ -37,211 +37,211 @@
         });
     </script>
 </head>
-<body class="bg-black text-gray-300 font-mono overflow-hidden fixed inset-0 select-none">
+<body class="app-body">
 
-    <div id="sys-log-panel" class="fixed top-0 left-0 w-full h-40 bg-black/95 border-b border-green-900 z-[200] transition-transform duration-300 flex flex-col font-mono text-[10px] transform translate-y-0 shadow-lg">
-        <div class="bg-green-900/20 px-2 py-1 flex justify-between items-center border-b border-green-900/50">
-            <span class="text-green-500 font-bold tracking-widest">:: SYSTEM_DEBUG ::</span>
-            <div class="flex gap-2">
-                <button onclick="document.getElementById('sys-log-content').innerHTML=''" class="text-xs text-gray-500 hover:text-white px-2 border border-gray-700 hover:border-white">CLEAR</button>
-                <button id="btn-toggle-log-internal" class="text-green-500 hover:text-white px-2 font-bold">[ HIDE ]</button>
+    <div id="sys-log-panel" class="log-panel log-hidden">
+        <div class="log-header">
+            <span class="log-title">:: SYSTEM_DEBUG ::</span>
+            <div class="log-controls">
+                <button onclick="document.getElementById('sys-log-content').innerHTML=''" class="btn-log-clear">CLEAR</button>
+                <button id="btn-toggle-log-internal" class="btn-log-toggle">[ HIDE ]</button>
             </div>
         </div>
-        <div id="sys-log-content" class="flex-1 overflow-y-auto p-2 space-y-1 font-mono">
-            <div class="text-gray-500">System Ready. Waiting for Audio Context...</div>
+        <div id="sys-log-content" class="log-content">
+            <div class="log-placeholder">System Ready. Waiting for Audio Context...</div>
         </div>
     </div>
 
-    <div id="export-modal" class="fixed inset-0 z-[150] bg-black/95 backdrop-blur hidden flex-col items-center justify-center gap-6">
-        <div class="w-80 border border-green-500 p-6 bg-gray-900 rounded shadow-[0_0_50px_rgba(0,255,0,0.2)]">
-            <h2 class="text-xl text-white tracking-widest mb-4 border-b border-green-600 pb-2 text-center font-bold">RENDER WAV</h2>
-            <div class="mb-6">
-                <label class="text-[10px] text-green-500 font-bold block mb-2 tracking-widest">LOOPS:</label>
-                <div class="grid grid-cols-4 gap-2">
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal-box border-green">
+            <h2 class="modal-title title-green">RENDER WAV</h2>
+            <div class="modal-section">
+                <label class="modal-label label-green">LOOPS:</label>
+                <div class="grid-loops">
                     <button class="export-rep-btn active" data-rep="1">1x</button>
                     <button class="export-rep-btn" data-rep="2">2x</button>
                     <button class="export-rep-btn" data-rep="4">4x</button>
                     <button class="export-rep-btn" data-rep="8">8x</button>
                 </div>
             </div>
-            <button id="btn-start-render" class="w-full py-3 bg-green-900/20 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black font-bold tracking-widest transition-all mb-2">RENDER</button>
-            <button id="btn-close-export" class="w-full py-2 text-gray-500 hover:text-white text-xs">CANCEL</button>
+            <button id="btn-start-render" class="btn-main btn-green">RENDER</button>
+            <button id="btn-close-export" class="btn-cancel">CANCEL</button>
         </div>
     </div>
 
-    <div id="memory-modal" class="fixed inset-0 z-[160] bg-black/95 backdrop-blur hidden flex-col items-center justify-center gap-6">
-        <div class="w-[90%] max-w-2xl border border-purple-500 p-6 bg-gray-900 rounded shadow-[0_0_50px_rgba(188,19,254,0.2)]">
-            <h2 class="text-xl text-white tracking-widest mb-4 border-b border-purple-600 pb-2 text-center font-bold">VIRTUAL MEMORY (.CSV)</h2>
+    <div id="memory-modal" class="modal-overlay hidden">
+        <div class="modal-box border-purple modal-wide">
+            <h2 class="modal-title title-purple">VIRTUAL MEMORY (.CSV)</h2>
             
-            <div class="mb-4">
-                <label class="text-[10px] text-purple-400 font-bold block mb-1 tracking-widest">CSV DATA STREAM:</label>
-                <textarea id="csv-io-area" class="w-full h-48 bg-black border border-gray-700 text-green-500 text-[10px] font-mono p-2 outline-none focus:border-purple-500 custom-scroll whitespace-pre"></textarea>
+            <div class="modal-section">
+                <label class="modal-label label-purple">CSV DATA STREAM:</label>
+                <textarea id="csv-io-area" class="csv-textarea"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <button id="btn-gen-csv" class="py-3 bg-purple-900/20 border border-purple-500 text-purple-300 hover:bg-purple-500 hover:text-black font-bold tracking-widest transition-all">GENERATE CSV</button>
-                <button id="btn-load-csv" class="py-3 bg-green-900/20 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black font-bold tracking-widest transition-all">LOAD FROM TEXT</button>
+            <div class="grid-actions">
+                <button id="btn-gen-csv" class="btn-action btn-purple">GENERATE CSV</button>
+                <button id="btn-load-csv" class="btn-action btn-green">LOAD FROM TEXT</button>
             </div>
 
-            <div class="flex gap-4 justify-center border-t border-gray-800 pt-4">
-                <button id="btn-download-csv" class="text-[10px] text-gray-500 hover:text-white underline uppercase">Download File</button>
-                <span class="text-gray-700">|</span>
-                <label class="text-[10px] text-gray-500 hover:text-white underline uppercase cursor-pointer">
+            <div class="file-actions">
+                <button id="btn-download-csv" class="btn-link">Download File</button>
+                <span class="separator">|</span>
+                <label class="btn-link cursor-pointer">
                     Upload File
                     <input type="file" id="file-upload-csv" accept=".csv" class="hidden">
                 </label>
             </div>
 
-            <button id="btn-close-memory" class="mt-6 w-full py-2 text-gray-500 hover:text-white text-xs bg-gray-800 hover:bg-gray-700">CLOSE MEMORY</button>
+            <button id="btn-close-memory" class="btn-close">CLOSE MEMORY</button>
         </div>
     </div>
 
-    <div id="main-menu" class="fixed inset-0 z-[100] bg-black/95 backdrop-blur hidden flex-col items-center justify-center gap-4">
-        <div class="w-72 border border-gray-800 p-6 bg-gray-900/90 rounded">
-            <h2 class="text-xl text-white tracking-widest mb-6 border-b border-green-600 pb-2 text-center glitch-text font-bold">MENU</h2>
+    <div id="main-menu" class="modal-overlay hidden">
+        <div class="menu-box">
+            <h2 class="menu-title glitch-text">MENU</h2>
             
-            <div class="mb-4 text-center space-y-2">
-                 <button id="btn-toggle-ui-mode" class="w-full py-2 border border-green-700/50 text-green-400 bg-green-900/10 hover:bg-green-900/30 text-xs font-bold tracking-widest">UI MODE: ANALOG</button>
-                 <button id="btn-toggle-visualizer" class="w-full py-2 border border-gray-700 text-gray-400 bg-transparent hover:bg-green-900/10 text-xs font-bold tracking-widest">VISUALIZER: OFF</button>
+            <div class="menu-group">
+                 <button id="btn-toggle-ui-mode" class="btn-menu btn-toggle-ui">UI MODE: ANALOG</button>
+                 <button id="btn-toggle-visualizer" class="btn-menu btn-toggle-vis">VISUALIZER: OFF</button>
             </div>
 
-            <div class="mb-6">
-                <h3 class="text-[10px] text-gray-500 mb-2 font-bold tracking-widest uppercase">Modules</h3>
-                <div id="synth-list-container" class="flex flex-col gap-1 mb-2"></div>
-                <button id="btn-add-synth" class="w-full py-2 text-xs border border-dashed border-green-700 text-green-500 hover:bg-green-900/20">+ ADD BASS</button>
+            <div class="menu-group">
+                <h3 class="menu-subtitle">Modules</h3>
+                <div id="synth-list-container" class="synth-list"></div>
+                <button id="btn-add-synth" class="btn-add-synth">+ ADD BASS</button>
             </div>
-            <div class="space-y-2">
-                <button id="btn-open-memory" class="w-full py-3 bg-gray-800 border border-purple-900 text-purple-400 hover:bg-purple-900/30 text-xs font-bold tracking-widest">VIRTUAL MEMORY (.CSV)</button>
-                <button id="btn-open-export" class="w-full py-3 bg-gray-800 border border-green-900 text-green-400 hover:bg-green-900/30 text-xs font-bold tracking-widest">EXPORT WAV</button>
-                <button id="btn-toggle-log-menu" class="w-full py-2 border border-gray-600 text-gray-300 hover:bg-gray-800 text-xs">SHOW LOGS</button>
-                <button id="btn-menu-clear" class="w-full py-2 border border-red-900/50 text-red-400 hover:bg-red-900/20 text-xs">CLEAR PATTERN</button>
-                <button id="btn-menu-panic" class="w-full py-2 border border-red-600 text-white bg-red-900/50 hover:bg-red-800 text-xs font-bold">RESET</button>
+            <div class="menu-group vertical">
+                <button id="btn-open-memory" class="btn-menu btn-purple">VIRTUAL MEMORY (.CSV)</button>
+                <button id="btn-open-export" class="btn-menu btn-green">EXPORT WAV</button>
+                <button id="btn-toggle-log-menu" class="btn-menu">SHOW LOGS</button>
+                <button id="btn-menu-clear" class="btn-menu btn-red-dim">CLEAR PATTERN</button>
+                <button id="btn-menu-panic" class="btn-menu btn-red">RESET</button>
             </div>
-            <button id="btn-menu-close" class="mt-6 w-full py-2 bg-gray-800 hover:bg-gray-700 text-xs text-white">RESUME</button>
+            <button id="btn-menu-close" class="btn-resume">RESUME</button>
         </div>
     </div>
 
-    <header class="h-14 border-b border-gray-800 flex items-center justify-between px-4 z-50 bg-black relative shadow-lg">
-        <div class="flex items-center gap-3 cursor-pointer group" id="app-logo">
-            <div id="activity-led" class="w-2 h-2 bg-green-900 rounded-full shadow-[0_0_5px_green]"></div>
-            <span class="text-lg font-bold tracking-widest text-white glitch-text group-hover:text-green-400 transition-colors">NEURODARK23</span>
+    <header id="app-header" class="app-header">
+        <div class="logo-group group" id="app-logo">
+            <div id="activity-led" class="led-indicator"></div>
+            <span class="app-title glitch-text">NEURODARK23</span>
         </div>
-        <button id="btn-open-menu" class="text-2xl text-green-500 hover:text-white leading-none pb-1 font-bold">&#9776;</button>
+        <button id="btn-open-menu" class="btn-hamburger">&#9776;</button>
     </header>
 
-    <div class="absolute top-14 bottom-0 left-0 right-0 overflow-y-auto custom-scroll pb-96">
-        <div class="px-4 py-6 w-full max-w-2xl mx-auto flex flex-col gap-6">
+    <div id="workspace" class="workspace custom-scroll">
+        <div class="workspace-inner">
             
-            <div class="bg-[#0a0a0a] p-4 rounded-xl border border-gray-800 flex justify-between items-center gap-4 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-r from-green-900/5 to-purple-900/5 pointer-events-none"></div>
-                <div class="text-center z-10">
-                    <label class="text-[9px] text-gray-500 block tracking-widest">BPM</label>
-                    <input type="number" id="bpm-input" value="174" class="bg-transparent text-green-500 font-bold text-2xl w-16 text-center border-b border-gray-800 focus:border-green-500 outline-none">
+            <div class="dashboard-panel">
+                <div class="dashboard-bg"></div>
+                <div class="dash-control">
+                    <label class="dash-label">BPM</label>
+                    <input type="number" id="bpm-input" value="174" class="bpm-input">
                 </div>
-                <div id="play-container" class="relative w-24 h-24 flex items-center justify-center z-10">
-                    <svg id="play-clock-svg" class="absolute w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 100 100"></svg>
-                    <button id="btn-play" class="w-14 h-14 rounded-full bg-[#111] border border-gray-700 flex items-center justify-center text-2xl text-gray-400 hover:text-green-400 hover:border-green-500 transition-all shadow-2xl active:scale-95 z-20 pb-1 pl-1">&#9658;</button>
+                <div id="play-container" class="play-container">
+                    <svg id="play-clock-svg" class="clock-svg" viewBox="0 0 100 100"></svg>
+                    <button id="btn-play" class="btn-play">&#9658;</button>
                 </div>
-                <div class="text-center z-10">
-                    <label class="text-[9px] text-gray-500 block tracking-widest">BLOCK</label>
-                    <div class="text-xs text-green-500 mt-2 font-mono bg-black/50 px-2 py-1 rounded border border-gray-800">
+                <div class="dash-control">
+                    <label class="dash-label">BLOCK</label>
+                    <div class="block-display">
                         <span id="display-current-block">1</span> / <span id="display-total-blocks">1</span>
                     </div>
                 </div>
             </div>
 
-            <div>
-                <div class="flex justify-between items-end mb-2">
-                    <span class="text-[10px] text-gray-500 tracking-widest">CHAIN</span>
-                    <div class="flex gap-1">
-                        <button id="btn-mem-copy" class="track-ctrl-btn text-cyan-500 border-cyan-900 hover:bg-cyan-900/20" title="Copy Pattern">CPY</button>
-                        <button id="btn-mem-paste" class="track-ctrl-btn text-cyan-500 border-cyan-900 hover:bg-cyan-900/20" title="Paste Pattern">PST</button>
-                        <div class="w-2"></div>
+            <div class="track-section">
+                <div class="track-header">
+                    <span class="track-label">CHAIN</span>
+                    <div class="track-tools">
+                        <button id="btn-mem-copy" class="track-ctrl-btn btn-cyan" title="Copy Pattern">CPY</button>
+                        <button id="btn-mem-paste" class="track-ctrl-btn btn-cyan" title="Paste Pattern">PST</button>
+                        <div class="spacer"></div>
                         <button id="btn-move-left" class="track-ctrl-btn" title="Move Left">&larr;</button>
                         <button id="btn-move-right" class="track-ctrl-btn" title="Move Right">&rarr;</button>
-                        <div class="w-2"></div>
-                        <button id="btn-add-block" class="track-ctrl-btn text-green-500 border-green-900 hover:bg-green-900/20">+</button>
-                        <button id="btn-del-block" class="track-ctrl-btn text-red-500 border-red-900 hover:bg-red-900/20">&times;</button>
+                        <div class="spacer"></div>
+                        <button id="btn-add-block" class="track-ctrl-btn btn-green-sm">+</button>
+                        <button id="btn-del-block" class="track-ctrl-btn btn-red-sm">&times;</button>
                     </div>
                 </div>
-                <div id="track-bar" class="h-14 border border-gray-800 bg-[#080808] rounded flex items-center gap-1 px-2 overflow-x-auto whitespace-nowrap custom-scroll shadow-inner"></div>
+                <div id="track-bar" class="track-bar custom-scroll"></div>
             </div>
 
-            <div id="instrument-tabs-container" class="flex flex-wrap gap-1"></div>
+            <div id="instrument-tabs-container" class="tabs-container"></div>
 
-            <div id="matrix-container" class="grid gap-1.5 w-full select-none p-1 bg-black/30 rounded border border-gray-900/50"></div>
-            <div class="h-10"></div> 
+            <div id="matrix-container" class="matrix-grid"></div>
+            <div class="bottom-spacer"></div> 
         </div>
     </div>
 
-    <div id="editor-panel" class="panel-expanded fixed bottom-0 left-0 w-full bg-[#0a0a0a] border-t border-gray-800 flex flex-col z-40 transition-all duration-300 shadow-[0_-5px_30px_rgba(0,0,0,0.8)]">
+    <div id="editor-panel" class="editor-panel panel-expanded">
         
-        <div class="h-8 bg-black flex items-center justify-between px-4 border-b border-gray-800 shrink-0 cursor-pointer" id="panel-header-trigger">
-            <span id="step-info-display" class="text-[10px] text-gray-500 tracking-widest">EDIT</span>
+        <div id="panel-header-trigger" class="panel-header">
+            <span id="step-info-display" class="edit-info">EDIT</span>
             
-            <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                <button id="btn-toggle-view-keys" class="text-[9px] font-bold border border-green-500/50 px-2 py-0.5 rounded text-green-400 bg-green-900/20 hover:bg-green-900/40 transition-colors">KEYS</button>
-                <button id="btn-toggle-view-fx" class="text-[9px] font-bold border border-green-500/50 px-2 py-0.5 rounded text-green-400 bg-green-900/20 hover:bg-green-900/40 transition-colors">FX</button>
+            <div class="panel-controls">
+                <button id="btn-toggle-view-keys" class="btn-toggle-view">KEYS</button>
+                <button id="btn-toggle-view-fx" class="btn-toggle-view">FX</button>
                 
-                <div class="w-px h-4 bg-gray-800 mx-1"></div>
+                <div class="separator-v"></div>
                 
-                <button id="btn-minimize-panel" class="text-xs text-green-500 hover:text-white px-2 py-1 font-bold">
+                <button id="btn-minimize-panel" class="btn-minimize">
                     &#9660; 
                 </button>
             </div>
         </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <div id="editor-bass" class="flex-1 p-2 flex flex-col gap-2 overflow-y-auto custom-scroll">
+        <div class="panel-content">
+            <div id="editor-bass" class="editor-bass custom-scroll">
                 
-                <div id="subpanel-fx" class="transition-all duration-300">
-                     <div id="fx-container-bar" class="w-full bg-[#050505] border border-gray-800 rounded p-2 relative shadow-inner">
+                <div id="subpanel-fx" class="subpanel">
+                     <div id="fx-container-bar" class="fx-container">
                         
-                        <div id="fx-controls-analog" class="grid grid-cols-2 gap-2 w-full transition-all duration-300">
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50 col-span-2">
-                                <label class="text-[8px] text-green-500 w-8 text-right font-bold">VOL</label>
-                                <input type="range" id="vol-slider" min="0" max="100" value="85" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                        <div id="fx-controls-analog" class="fx-analog-grid">
+                            <div class="fx-item col-span-2">
+                                <label class="fx-label label-green">VOL</label>
+                                <input type="range" id="vol-slider" min="0" max="100" value="85" class="fx-slider">
                             </div>
 
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">CUT</label>
-                                <input type="range" id="cutoff-slider" min="100" max="5000" value="800" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">CUT</label>
+                                <input type="range" id="cutoff-slider" min="100" max="5000" value="800" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">RES</label>
-                                <input type="range" id="res-slider" min="0" max="20" value="4" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">RES</label>
+                                <input type="range" id="res-slider" min="0" max="20" value="4" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">ENV</label>
-                                <input type="range" id="env-slider" min="0" max="100" value="60" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">ENV</label>
+                                <input type="range" id="env-slider" min="0" max="100" value="60" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">DEC</label>
-                                <input type="range" id="dec-slider" min="0" max="100" value="40" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">DEC</label>
+                                <input type="range" id="dec-slider" min="0" max="100" value="40" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">ACC</label>
-                                <input type="range" id="acc-slider" min="0" max="100" value="50" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">ACC</label>
+                                <input type="range" id="acc-slider" min="0" max="100" value="50" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">DRV</label>
-                                <input type="range" id="dist-slider" min="0" max="100" value="20" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">DRV</label>
+                                <input type="range" id="dist-slider" min="0" max="100" value="20" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">TONE</label>
-                                <input type="range" id="tone-slider" min="0" max="100" value="100" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">TONE</label>
+                                <input type="range" id="tone-slider" min="0" max="100" value="100" class="fx-slider">
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-900/50 p-1 rounded border border-gray-800/50">
-                                <label class="text-[8px] text-gray-500 w-8 text-right font-bold">GAIN</label>
-                                <input type="range" id="dgain-slider" min="0" max="100" value="60" class="flex-1 h-1 bg-black rounded appearance-none cursor-pointer">
+                            <div class="fx-item">
+                                <label class="fx-label">GAIN</label>
+                                <input type="range" id="dgain-slider" min="0" max="100" value="60" class="fx-slider">
                             </div>
                         </div>
 
-                        <div id="fx-controls-digital" class="hidden flex flex-wrap gap-1 w-full">
-                            <div class="digital-fx-box grow min-w-[50px]">
-                                <div class="dfx-label text-green-500">VOL</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="vol-digital" value="85" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                        <div id="fx-controls-digital" class="fx-digital-flex hidden">
+                            <div class="digital-fx-box">
+                                <div class="dfx-label text-green">VOL</div>
+                                <div class="dfx-value-container">
+                                    <input type="number" id="vol-digital" value="85" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="volume" data-dir="-1">-</button>
@@ -249,10 +249,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">CUT</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="cutoff-digital" value="14" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="cutoff-digital" value="14" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="cutoff" data-dir="-1">-</button>
@@ -260,10 +260,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">RES</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="res-digital" value="20" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="res-digital" value="20" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="resonance" data-dir="-1">-</button>
@@ -271,10 +271,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">ENV</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="env-digital" value="60" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="env-digital" value="60" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="envMod" data-dir="-1">-</button>
@@ -282,10 +282,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">DEC</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="dec-digital" value="40" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="dec-digital" value="40" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="decay" data-dir="-1">-</button>
@@ -293,10 +293,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">ACC</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="acc-digital" value="50" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="acc-digital" value="50" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="accentInt" data-dir="-1">-</button>
@@ -304,10 +304,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">DRV</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="dist-digital" value="20" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="dist-digital" value="20" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="distortion" data-dir="-1">-</button>
@@ -315,10 +315,10 @@
                                 </div>
                             </div>
 
-                            <div class="digital-fx-box grow min-w-[50px]">
+                            <div class="digital-fx-box">
                                 <div class="dfx-label">TONE</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="tone-digital" value="100" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="tone-digital" value="100" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="distTone" data-dir="-1">-</button>
@@ -326,10 +326,10 @@
                                 </div>
                             </div>
 
-                             <div class="digital-fx-box grow min-w-[50px]">
+                             <div class="digital-fx-box">
                                 <div class="dfx-label">GAIN</div>
-                                <div class="dfx-value-container relative group">
-                                    <input type="number" id="dgain-digital" value="60" class="dfx-value bg-transparent text-center focus:outline-none focus:text-white" min="0" max="100">
+                                <div class="dfx-value-container">
+                                    <input type="number" id="dgain-digital" value="60" class="dfx-value" min="0" max="100">
                                 </div>
                                 <div class="dfx-buttons">
                                     <button class="dfx-btn" data-target="distGain" data-dir="-1">-</button>
@@ -340,48 +340,48 @@
                     </div>
                 </div>
 
-                <div id="subpanel-keys" class="transition-all duration-300 flex flex-col gap-1">
-                    <div class="flex justify-between items-center shrink-0 gap-2 mb-1">
-                        <div class="flex items-center gap-1 bg-gray-900 rounded p-1 border border-gray-800 shrink-0">
-                            <button id="oct-down" class="w-8 h-6 bg-gray-800 text-xs hover:bg-gray-700 rounded text-gray-400 font-bold">-</button>
-                            <span id="oct-display" class="w-8 text-center text-xs font-bold text-green-500">3</span>
-                            <button id="oct-up" class="w-8 h-6 bg-gray-800 text-xs hover:bg-gray-700 rounded text-gray-400 font-bold">+</button>
+                <div id="subpanel-keys" class="subpanel keys-container">
+                    <div class="keys-controls">
+                        <div class="octave-ctrl">
+                            <button id="oct-down" class="btn-oct">-</button>
+                            <span id="oct-display" class="oct-display">3</span>
+                            <button id="oct-up" class="btn-oct">+</button>
                         </div>
                         
-                        <div class="flex gap-1 flex-1 justify-center">
-                            <button id="btn-toggle-slide" class="px-2 py-1 border border-gray-700 bg-gray-900/50 text-gray-500 text-[10px] tracking-widest hover:text-green-400 hover:border-green-600 transition-all font-bold rounded">~ SLIDE</button>
-                            <button id="btn-toggle-accent" class="px-2 py-1 border border-gray-700 bg-gray-900/50 text-gray-500 text-[10px] tracking-widest hover:text-green-400 hover:border-green-600 transition-all font-bold rounded">^ ACCENT</button>
+                        <div class="modifiers-ctrl">
+                            <button id="btn-toggle-slide" class="btn-mod">~ SLIDE</button>
+                            <button id="btn-toggle-accent" class="btn-mod">^ ACCENT</button>
                         </div>
 
-                        <button id="btn-waveform" class="w-20 h-8 bg-gray-900 border border-gray-800 rounded flex items-center justify-center gap-2 text-[10px] text-gray-400 hover:border-green-500 hover:text-green-500 transition-colors shrink-0">
-                            <span class="text-lg font-bold leading-none mb-0.5">~</span>
+                        <button id="btn-waveform" class="btn-wave">
+                            <span class="wave-icon">~</span>
                             <span>SAW</span>
                         </button>
                     </div>
 
-                    <div id="piano-container" class="relative h-20 w-full select-none mb-1 shrink-0">
-                        <div class="flex w-full h-full gap-0.5">
-                            <button class="piano-key white-key flex-1" data-note="C">C</button>
-                            <button class="piano-key white-key flex-1" data-note="D">D</button>
-                            <button class="piano-key white-key flex-1" data-note="E">E</button>
-                            <button class="piano-key white-key flex-1" data-note="F">F</button>
-                            <button class="piano-key white-key flex-1" data-note="G">G</button>
-                            <button class="piano-key white-key flex-1" data-note="A">A</button>
-                            <button class="piano-key white-key flex-1" data-note="B">B</button>
+                    <div id="piano-container" class="piano-wrapper">
+                        <div class="piano-white-keys">
+                            <button class="piano-key white-key" data-note="C">C</button>
+                            <button class="piano-key white-key" data-note="D">D</button>
+                            <button class="piano-key white-key" data-note="E">E</button>
+                            <button class="piano-key white-key" data-note="F">F</button>
+                            <button class="piano-key white-key" data-note="G">G</button>
+                            <button class="piano-key white-key" data-note="A">A</button>
+                            <button class="piano-key white-key" data-note="B">B</button>
                         </div>
 
-                        <button class="piano-key black-key absolute top-0 w-[10%] -translate-x-1/2 z-10" style="left: 14.28%;" data-note="C#">C#</button>
-                        <button class="piano-key black-key absolute top-0 w-[10%] -translate-x-1/2 z-10" style="left: 28.57%;" data-note="D#">D#</button>
-                        <button class="piano-key black-key absolute top-0 w-[10%] -translate-x-1/2 z-10" style="left: 57.14%;" data-note="F#">F#</button>
-                        <button class="piano-key black-key absolute top-0 w-[10%] -translate-x-1/2 z-10" style="left: 71.42%;" data-note="G#">G#</button>
-                        <button class="piano-key black-key absolute top-0 w-[10%] -translate-x-1/2 z-10" style="left: 85.71%;" data-note="A#">A#</button>
+                        <button class="piano-key black-key pos-1" data-note="C#">C#</button>
+                        <button class="piano-key black-key pos-2" data-note="D#">D#</button>
+                        <button class="piano-key black-key pos-3" data-note="F#">F#</button>
+                        <button class="piano-key black-key pos-4" data-note="G#">G#</button>
+                        <button class="piano-key black-key pos-5" data-note="A#">A#</button>
                     </div>
                     
-                    <button id="btn-delete-note" class="w-full py-1 text-[10px] text-red-500 border border-red-900/30 hover:bg-red-900/10 rounded tracking-widest font-bold transition-colors shrink-0">CLEAR NOTE</button>
+                    <button id="btn-delete-note" class="btn-clear-note">CLEAR NOTE</button>
                 </div>
             </div>
 
-            <div id="editor-drum" class="hidden flex-1 p-2 overflow-y-auto custom-scroll"></div>
+            <div id="editor-drum" class="editor-drum hidden custom-scroll"></div>
         </div>
     </div>
 
