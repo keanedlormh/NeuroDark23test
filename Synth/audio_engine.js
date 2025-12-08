@@ -1,6 +1,7 @@
 /*
- * AUDIO ENGINE MODULE (v35 - Stable Sync)
+ * AUDIO ENGINE MODULE (v37 - Drum Mix Support)
  * Handles AudioContext, Scheduling, Synthesis, and Rendering.
+ * Updated to support Drum Volume Mixing & Variants in Offline Render.
  */
 
 class AudioEngine {
@@ -48,6 +49,7 @@ class AudioEngine {
     initSynths() {
         if (this.bassSynths.length === 0) this.addBassSynth('bass-1');
         else this.bassSynths.forEach(s => s.init(this.ctx, this.masterGain));
+        
         if (window.drumSynth) window.drumSynth.init(this.ctx, this.masterGain);
     }
 
@@ -91,22 +93,18 @@ class AudioEngine {
         return this.bassSynths.find(s => s.id === id);
     }
 
-    // --- CRITICAL FUNCTION FOR CSV IMPORT ---
     syncWithMatrix(matrix) {
         if (!matrix) return;
-        // 1. Get active tracks from matrix
         const activeIds = new Set();
         matrix.blocks.forEach(b => {
             if(b.tracks) Object.keys(b.tracks).forEach(id => activeIds.add(id));
         });
 
-        // 2. Remove Synths NOT in matrix
         for (let i = this.bassSynths.length - 1; i >= 0; i--) {
             const synth = this.bassSynths[i];
             if (!activeIds.has(synth.id)) this.bassSynths.splice(i, 1);
         }
 
-        // 3. Add Synths IN matrix
         activeIds.forEach(id => {
             if (!this.getSynth(id)) this.addBassSynth(id);
         });
@@ -150,10 +148,13 @@ class AudioEngine {
         const data = window.timeMatrix.getStepData(step, block);
         if (!data) return;
 
+        // Play Drums
         if (data.drums && window.drumSynth) {
+            // Note: Timematrix v37 will send channel IDs (0-8) here
             data.drums.forEach(id => window.drumSynth.play(id, time));
         }
 
+        // Play Bass
         if (data.tracks) {
             Object.keys(data.tracks).forEach(tid => {
                 const noteInfo = data.tracks[tid][step];
@@ -212,6 +213,7 @@ class AudioEngine {
             offMaster.gain.value = 0.6;
             offMaster.connect(offCtx.destination);
 
+            // 1. CLONE BASS SYNTHS
             const offBassSynths = [];
             this.bassSynths.forEach(liveSynth => {
                 const s = new window.BassSynth(liveSynth.id);
@@ -225,15 +227,33 @@ class AudioEngine {
                 offBassSynths.push(s);
             });
 
+            // 2. CLONE DRUM SYNTH (NEW)
             const offDrum = new window.DrumSynth();
             offDrum.init(offCtx, offMaster);
+            
+            // Sync Drum State (Master Vol + Channel Configs)
+            if (window.drumSynth) {
+                offDrum.setMasterVolume(window.drumSynth.masterVolume);
+                
+                window.drumSynth.channels.forEach(ch => {
+                    // Copy Volume
+                    offDrum.setChannelVolume(ch.id, ch.volume);
+                    // Copy Variant
+                    offDrum.setChannelVariant(ch.id, ch.variant);
+                });
+            }
 
+            // 3. RENDER LOOP
             let t = 0.0;
             for (let r = 0; r < reps; r++) {
                 for (let b = 0; b < totalBlocks; b++) {
                     const blk = window.timeMatrix.blocks[b];
                     for (let s = 0; s < stepsPerBlock; s++) {
-                        if (blk.drums[s]) blk.drums[s].forEach(id => offDrum.play(id, t));
+                        // Drums
+                        if (blk.drums[s]) {
+                            blk.drums[s].forEach(id => offDrum.play(id, t));
+                        }
+                        // Bass
                         if (blk.tracks) {
                             Object.keys(blk.tracks).forEach(tid => {
                                 const n = blk.tracks[tid][s];
