@@ -1,5 +1,5 @@
 /*
- * UI CONTROLLER MODULE (v34)
+ * UI CONTROLLER MODULE (v35)
  * Synchronized with new CSS and TimeMatrix
  */
 
@@ -13,10 +13,14 @@ class UIController {
         this.bindGlobalEvents();
         this.bindSynthControls();
         this.bindEditorControls();
+        
+        // Initial Renders
         this.renderInstrumentTabs();
         this.renderTrackBar();
         this.updateEditors();
         this.initPlayClock();
+        
+        // Start Visual Loop
         this.renderLoop();
         
         if(window.logToScreen) window.logToScreen("UI Controller Initialized");
@@ -58,7 +62,7 @@ class UIController {
         this.safeClick('btn-load-csv', () => {
             const area = document.getElementById('csv-io-area');
             if(area && window.timeMatrix && window.timeMatrix.importFromCSV(area.value)) {
-                if(window.audioEngine && window.audioEngine.syncWithMatrix) {
+                if(window.audioEngine && typeof window.audioEngine.syncWithMatrix === 'function') {
                     window.audioEngine.syncWithMatrix(window.timeMatrix);
                 }
                 this.fullRefresh();
@@ -456,5 +460,6 @@ class UIController {
     initPlayClock() { /* SVG Clock Init */ const s=document.getElementById('play-clock-svg'); if(!s)return; s.innerHTML=''; const t=16, r=45, c=50, ci=2*Math.PI*r, g=2, d=(ci/t)-g; for(let i=0;i<t;i++){const e=document.createElementNS("http://www.w3.org/2000/svg","circle");e.setAttribute("r",r);e.setAttribute("cx",c);e.setAttribute("cy",c);e.setAttribute("fill","transparent");e.setAttribute("stroke-width","4");e.setAttribute("stroke-dasharray",`${d} ${ci-d}`);e.setAttribute("transform",`rotate(${(360/t)*i},${c},${c})`);e.setAttribute("id",`clock-seg-${i}`);e.setAttribute("stroke","#333");s.appendChild(e);} }
     updatePlayClock(step) { for(let i=0;i<16;i++){ const s=document.getElementById(`clock-seg-${i}`); if(s){ if(i===step){s.setAttribute("stroke","#00ff41");s.setAttribute("opacity","1");} else if(i<step){s.setAttribute("stroke","#004411");s.setAttribute("opacity","0.5");} else {s.setAttribute("stroke","#222");s.setAttribute("opacity","0.3");} } } }
     blinkLed() { const l=document.getElementById('activity-led'); if(l){ l.style.backgroundColor='#fff'; l.style.boxShadow='0 0 8px #fff'; setTimeout(()=>{l.style.backgroundColor='';l.style.boxShadow='';},50); } }
+    safeClick(id, fn) { const el = document.getElementById(id); if(el) el.onclick = fn; }
 }
 window.UIController = UIController;
