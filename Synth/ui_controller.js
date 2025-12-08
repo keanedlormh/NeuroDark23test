@@ -1,13 +1,16 @@
 /*
- * UI CONTROLLER MODULE (v36 - Hotfix)
- * Fixed: Restored missing 'setTab' function causing navigation errors.
- * Includes Drum Grid visibility fix and semantic structure.
+ * UI CONTROLLER MODULE (v37 - Drum Matrix & Config)
+ * Handles DOM manipulation, Event Listeners, and Visual Feedback.
+ * Implements Dynamic Drum Editor & Configuration Menu.
  */
 
 class UIController {
     constructor() {
         this.drawFrameId = null;
         this.lastDrawnStep = -1;
+        // Timer references for repeater buttons
+        this.repeatTimer = null;
+        this.repeatInterval = null;
     }
 
     init() {
@@ -20,6 +23,9 @@ class UIController {
         this.renderTrackBar();
         this.updateEditors();
         this.initPlayClock();
+        
+        // Render initial config menu state
+        this.renderDrumConfigMenu();
         
         // Start Visual Loop
         this.renderLoop();
@@ -41,7 +47,11 @@ class UIController {
         this.safeClick('app-logo', () => this.toggleTransport());
         
         // Menu
-        this.safeClick('btn-open-menu', () => { this.renderSynthMenu(); this.toggleMenu(); });
+        this.safeClick('btn-open-menu', () => { 
+            this.renderSynthMenu(); 
+            this.renderDrumConfigMenu(); // Refresh config on open
+            this.toggleMenu(); 
+        });
         this.safeClick('btn-menu-close', () => this.toggleMenu());
         this.safeClick('btn-toggle-ui-mode', () => this.toggleUIMode());
         this.safeClick('btn-toggle-visualizer', () => this.toggleVisualizerMode());
@@ -52,7 +62,7 @@ class UIController {
         this.safeClick('btn-open-memory', () => { this.toggleMenu(); this.toggleMemoryModal(); });
         this.safeClick('btn-close-memory', () => this.toggleMemoryModal());
 
-        // CSV
+        // CSV Actions
         this.safeClick('btn-gen-csv', () => {
             if(window.timeMatrix) {
                 document.getElementById('csv-io-area').value = window.timeMatrix.exportToCSV();
@@ -201,7 +211,6 @@ class UIController {
 
     // --- LOGIC ---
     
-    // !!! RESTORED FUNCTION !!!
     setTab(v) {
         window.AppState.activeView = v;
         this.renderInstrumentTabs();
@@ -387,26 +396,6 @@ class UIController {
         c.appendChild(d);
     }
 
-    renderDrumRows() {
-        const c = document.getElementById('editor-drum');
-        if(!c) return;
-        c.innerHTML = '';
-        const cur = window.timeMatrix.blocks[window.AppState.editingBlock].drums[window.AppState.selectedStep];
-        window.drumSynth.kits.forEach(k => {
-            const act = cur.includes(k.id);
-            const b = document.createElement('button');
-            b.className = `drum-row ${act ? 'active' : ''}`;
-            b.innerHTML = `<span class="drum-label">${k.name}</span><div class="drum-dot" style="background-color:${k.color};box-shadow:0 0 6px ${k.color}"></div>`;
-            b.onclick = () => {
-                if(window.audioEngine) window.audioEngine.resume();
-                if(act) cur.splice(cur.indexOf(k.id), 1);
-                else { cur.push(k.id); window.audioEngine.previewDrum(k.id); }
-                this.updateEditors();
-            };
-            c.appendChild(b);
-        });
-    }
-
     renderSynthMenu() {
         const c = document.getElementById('synth-list-container');
         if(!c) return;
@@ -419,9 +408,150 @@ class UIController {
         });
     }
 
+    // --- NEW: DRUM EDITOR & CONFIG ---
+
+    renderDrumRows() {
+        const c = document.getElementById('editor-drum');
+        if(!c || !window.drumSynth) return;
+        c.innerHTML = '';
+        
+        // 1. Master Volume Header
+        const masterRow = document.createElement('div');
+        masterRow.className = 'drum-master-panel';
+        masterRow.innerHTML = `
+            <span class="drum-master-label">MASTER VOL</span>
+            <div class="drum-vol-ctrl">
+                <button class="drum-vol-btn drum-rep-btn" data-target="master" data-dir="-1">-</button>
+                <div class="drum-vol-display" id="drum-master-vol">${window.drumSynth.masterVolume}</div>
+                <button class="drum-vol-btn drum-rep-btn" data-target="master" data-dir="1">+</button>
+            </div>
+        `;
+        c.appendChild(masterRow);
+
+        // 2. Channel Rows
+        const cur = window.timeMatrix.blocks[window.AppState.editingBlock].drums[window.AppState.selectedStep];
+        
+        window.drumSynth.channels.forEach(ch => {
+            // Skip inactive channels (Variant 0)
+            if(ch.variant === 0) return;
+
+            const act = cur.includes(ch.id);
+            // Default color if undefined
+            const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
+            const color = window.drumSynth.channelColors[colIndex % 9];
+
+            const row = document.createElement('div');
+            row.className = `drum-row ${act ? 'active' : ''}`;
+            
+            // Channel Info & Toggle (Left Side)
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'drum-info';
+            infoDiv.innerHTML = `<div class="drum-color-tag" style="background:${color};box-shadow:0 0 5px ${color}"></div><span class="drum-label">${ch.name}</span>`;
+            infoDiv.onclick = () => {
+                if(window.audioEngine) window.audioEngine.resume();
+                if(act) cur.splice(cur.indexOf(ch.id), 1);
+                else { cur.push(ch.id); window.audioEngine.previewDrum(ch.id); }
+                this.updateEditors();
+            };
+
+            // Volume Control (Right Side)
+            const volDiv = document.createElement('div');
+            volDiv.className = 'drum-vol-ctrl';
+            volDiv.innerHTML = `
+                <button class="drum-vol-btn drum-rep-btn" data-target="${ch.id}" data-dir="-1">-</button>
+                <div class="drum-vol-display" id="drum-vol-${ch.id}">${ch.volume}</div>
+                <button class="drum-vol-btn drum-rep-btn" data-target="${ch.id}" data-dir="1">+</button>
+            `;
+
+            row.appendChild(infoDiv);
+            row.appendChild(volDiv);
+            c.appendChild(row);
+        });
+
+        // Re-bind repeater buttons for the new elements
+        this.setupDrumRepeaters();
+    }
+
+    renderDrumConfigMenu() {
+        const c = document.getElementById('drum-config-container');
+        if(!c || !window.drumSynth) return;
+        c.innerHTML = '';
+
+        window.drumSynth.channels.forEach(ch => {
+            const row = document.createElement('div');
+            row.className = 'config-row';
+            
+            // Color Cycle logic
+            const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
+            const color = window.drumSynth.channelColors[colIndex % 9];
+
+            row.innerHTML = `
+                <div class="config-label">${ch.id + 1}</div>
+                <div class="config-controls">
+                    <select class="variant-select" id="conf-var-${ch.id}">
+                        <option value="0" ${ch.variant===0?'selected':''}>OFF</option>
+                        <option value="1" ${ch.variant===1?'selected':''}>${ch.name} 1</option>
+                        <option value="2" ${ch.variant===2?'selected':''}>${ch.name} 2</option>
+                        <option value="3" ${ch.variant===3?'selected':''}>${ch.name} 3</option>
+                        <option value="4" ${ch.variant===4?'selected':''}>${ch.name} 4</option>
+                    </select>
+                    <div class="color-select" id="conf-col-${ch.id}" style="background:${color}"></div>
+                </div>
+            `;
+            c.appendChild(row);
+
+            // Bind Events
+            const sel = row.querySelector(`#conf-var-${ch.id}`);
+            sel.onchange = (e) => {
+                const val = parseInt(e.target.value);
+                window.drumSynth.setChannelVariant(ch.id, val);
+                // If set to OFF, we need to refresh editor
+                if(window.AppState.activeView === 'drum') this.updateEditors();
+            };
+
+            const colBtn = row.querySelector(`#conf-col-${ch.id}`);
+            colBtn.onclick = () => {
+                const nextCol = (colIndex + 1) % 9;
+                ch.colorId = nextCol;
+                colBtn.style.background = window.drumSynth.channelColors[nextCol];
+                if(window.AppState.activeView === 'drum') this.updateEditors();
+            };
+        });
+    }
+
+    setupDrumRepeaters() {
+        // Handles Volume buttons in Drum Editor
+        document.querySelectorAll('.drum-rep-btn').forEach(btn => {
+            const target = btn.dataset.target; // 'master' or channel ID
+            const dir = parseInt(btn.dataset.dir);
+
+            const change = () => {
+                if(!window.drumSynth) return;
+                
+                if(target === 'master') {
+                    const next = Math.max(0, Math.min(100, window.drumSynth.masterVolume + dir));
+                    window.drumSynth.setMasterVolume(next);
+                    const disp = document.getElementById('drum-master-vol');
+                    if(disp) disp.innerText = next;
+                } else {
+                    const id = parseInt(target);
+                    const ch = window.drumSynth.channels[id];
+                    if(ch) {
+                        const next = Math.max(0, Math.min(100, ch.volume + dir));
+                        window.drumSynth.setChannelVolume(id, next);
+                        const disp = document.getElementById(`drum-vol-${id}`);
+                        if(disp) disp.innerText = next;
+                    }
+                }
+            };
+
+            this.bindRepeater(btn, change);
+        });
+    }
+
     setupDigitalRepeaters() {
+        // Handles Bass Synth Digital Controls
         document.querySelectorAll('.dfx-btn').forEach(btn => {
-            let tId = null, iId = null;
             const changeVal = () => {
                 const s = window.audioEngine.getSynth(window.AppState.activeView);
                 if(!s) return;
@@ -431,11 +561,21 @@ class UIController {
                 let next = Math.max(0, Math.min(100, cur + d));
                 if(p==='resonance') this.handleParamChange(p, next/5); else if(p==='cutoff') this.handleParamChange(p, ((next/100)*4900)+100); else this.handleParamChange(p, next);
             };
-            const stop = () => { clearTimeout(tId); clearInterval(iId); };
-            const start = () => { changeVal(); tId = setTimeout(() => iId = setInterval(changeVal, 100), 400); };
-            btn.addEventListener('mousedown', start); btn.addEventListener('mouseup', stop); btn.addEventListener('mouseleave', stop);
-            btn.addEventListener('touchstart', (e)=>{e.preventDefault();start();}); btn.addEventListener('touchend', stop);
+            this.bindRepeater(btn, changeVal);
         });
+    }
+
+    bindRepeater(btn, action) {
+        const stop = () => { clearTimeout(this.repeatTimer); clearInterval(this.repeatInterval); };
+        const start = () => { 
+            action(); 
+            this.repeatTimer = setTimeout(() => this.repeatInterval = setInterval(action, 80), 400); 
+        };
+        btn.onmousedown = start;
+        btn.onmouseup = stop;
+        btn.onmouseleave = stop;
+        btn.ontouchstart = (e) => { e.preventDefault(); start(); };
+        btn.ontouchend = stop;
     }
 
     // Helpers
