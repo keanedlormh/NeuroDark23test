@@ -1,7 +1,7 @@
 /*
- * UI CONTROLLER MODULE (v31.1 - CSV & Memory Patch)
+ * UI CONTROLLER MODULE (v32 - Semantic UI & Offline)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
- * Includes Virtual Memory (CSV) logic and Audio Engine Sync.
+ * Removed Tailwind dependencies in favor of native semantic CSS.
  */
 
 class UIController {
@@ -61,16 +61,15 @@ class UIController {
         });
         this.safeClick('btn-close-export', () => this.toggleExportModal());
 
-        // --- NEW: MEMORY TRIGGERS (CSV) ---
+        // MEMORY TRIGGERS (CSV)
         this.safeClick('btn-open-memory', () => {
             this.toggleMenu();
             this.toggleMemoryModal();
         });
         this.safeClick('btn-close-memory', () => this.toggleMemoryModal());
 
-        // --- NEW: CSV ACTIONS ---
+        // --- CSV ACTIONS ---
         
-        // 1. GENERATE CSV (Export to Text Area)
         this.safeClick('btn-gen-csv', () => {
             if(window.timeMatrix) {
                 const csvData = window.timeMatrix.exportToCSV();
@@ -80,32 +79,26 @@ class UIController {
             }
         });
 
-        // 2. LOAD FROM TEXT (Import from Text Area)
         this.safeClick('btn-load-csv', () => {
             const area = document.getElementById('csv-io-area');
             if(area && window.timeMatrix) {
-                // A. Import Data to Matrix
                 const success = window.timeMatrix.importFromCSV(area.value);
                 
                 if(success) {
-                    // B. Sync Audio Engine (CRITICAL STEP)
                     if(window.audioEngine && typeof window.audioEngine.syncWithMatrix === 'function') {
                         window.audioEngine.syncWithMatrix(window.timeMatrix);
-                    } else {
-                        console.warn("AudioEngine.syncWithMatrix not found. Please update audio_engine.js");
                     }
 
-                    // C. Reset UI State
+                    // Reset UI State
                     window.AppState.editingBlock = 0;
                     window.AppState.selectedStep = 0;
                     
-                    // D. Render Everything
+                    // Render Everything
                     this.renderInstrumentTabs();
                     this.renderTrackBar();
                     this.updateEditors();
                     this.renderSynthMenu();
                     
-                    // E. Set active view
                     if(window.audioEngine && window.audioEngine.bassSynths.length > 0) {
                         this.setTab(window.audioEngine.bassSynths[0].id);
                     } else {
@@ -113,7 +106,6 @@ class UIController {
                     }
 
                     if(window.logToScreen) window.logToScreen("CSV Loaded Successfully");
-                    // Auto close modal on success
                     this.toggleMemoryModal(); 
                 } else {
                     if(window.logToScreen) window.logToScreen("CSV Import Failed: Invalid Format", 'error');
@@ -121,7 +113,6 @@ class UIController {
             }
         });
 
-        // 3. DOWNLOAD CSV FILE
         this.safeClick('btn-download-csv', () => {
             const content = document.getElementById('csv-io-area').value;
             if(!content) { 
@@ -138,7 +129,6 @@ class UIController {
             URL.revokeObjectURL(url);
         });
 
-        // 4. UPLOAD CSV FILE
         const fileInput = document.getElementById('file-upload-csv');
         if(fileInput) {
             fileInput.addEventListener('change', (e) => {
@@ -150,23 +140,20 @@ class UIController {
                     const contents = e.target.result;
                     const area = document.getElementById('csv-io-area');
                     if(area) area.value = contents;
-                    
-                    // Auto trigger load logic
                     document.getElementById('btn-load-csv').click();
                 };
                 reader.readAsText(file);
-                // Reset input
                 fileInput.value = '';
             });
         }
         
-        // RENDER BUTTON (AUDIO)
+        // RENDER BUTTON
         this.safeClick('btn-start-render', async () => { 
             if(window.audioEngine) {
                 const btn = document.getElementById('btn-start-render');
                 if(btn) {
                     btn.innerText = "WAIT...";
-                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.classList.add('btn-disabled');
                     btn.disabled = true;
                 }
                 await new Promise(r => setTimeout(r, 50));
@@ -177,7 +164,7 @@ class UIController {
                 } finally {
                     if(btn) {
                         btn.innerText = "RENDER";
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        btn.classList.remove('btn-disabled');
                         btn.disabled = false;
                     }
                 }
@@ -250,18 +237,25 @@ class UIController {
             };
         });
         
-        // Logs
+        // Logs Toggle
         const logBtn = document.getElementById('btn-toggle-log-internal');
         const logPanel = document.getElementById('sys-log-panel');
         if(logBtn && logPanel) {
             logBtn.onclick = () => {
-                logPanel.classList.toggle('-translate-y-full');
-                logPanel.classList.toggle('translate-y-0');
-                logBtn.innerText = logPanel.classList.contains('translate-y-0') ? "[HIDE]" : "[SHOW]";
+                const isHidden = logPanel.classList.contains('log-hidden');
+                if(isHidden) {
+                    logPanel.classList.remove('log-hidden');
+                    logPanel.classList.add('log-visible');
+                    logBtn.innerText = "[HIDE]";
+                } else {
+                    logPanel.classList.remove('log-visible');
+                    logPanel.classList.add('log-hidden');
+                    logBtn.innerText = "[SHOW]";
+                }
             };
         }
         this.safeClick('btn-toggle-log-menu', () => { 
-            if(logPanel.classList.contains('-translate-y-full')) logBtn.click();
+            if(logPanel.classList.contains('log-hidden')) logBtn.click();
             this.toggleMenu(); 
         });
         
@@ -319,7 +313,7 @@ class UIController {
         bindDigital('tone-digital', 'distTone');
         bindDigital('dgain-digital', 'distGain');
 
-        // --- DIGITAL REPEATERS (+/- Buttons) ---
+        // --- DIGITAL REPEATERS ---
         this.setupDigitalRepeaters();
 
         // Waveform Toggle
@@ -388,14 +382,12 @@ class UIController {
 
         let finalValue = value;
 
-        // Cutoff mapping normalization
         if (param === 'cutoff') {
             const minHz = 100, maxHz = 5000;
             const clamped = Math.max(minHz, Math.min(maxHz, value));
             finalValue = ((clamped - minHz) / (maxHz - minHz)) * 100;
         }
 
-        // Apply to Audio Engine
         if(param === 'volume') synth.setVolume(finalValue);
         else if(param === 'distortion') synth.setDistortion(finalValue);
         else if(param === 'cutoff') synth.setCutoff(finalValue);
@@ -406,7 +398,6 @@ class UIController {
         else if(param === 'distTone') synth.setDistTone(finalValue);
         else if(param === 'distGain') synth.setDistGain(finalValue);
 
-        // Sync UI
         this.syncControls(window.AppState.activeView);
     }
 
@@ -427,10 +418,8 @@ class UIController {
         if(window.AppState.activeView === 'drum') return;
         const sId = window.AppState.activeView;
         
-        // Play Preview
         if(window.audioEngine) window.audioEngine.previewNote(sId, note, window.AppState.currentOctave);
 
-        // Write to Matrix
         const block = window.timeMatrix.blocks[window.AppState.editingBlock];
         if(!block.tracks[sId]) window.timeMatrix.registerTrack(sId);
         
@@ -476,10 +465,10 @@ class UIController {
         
         if(isPlaying) {
             btn.innerHTML = "&#10074;&#10074;"; // Pause icon
-            btn.classList.add('border-green-500', 'text-green-500');
+            btn.classList.add('playing');
         } else {
             btn.innerHTML = "&#9658;"; // Play icon
-            btn.classList.remove('border-green-500', 'text-green-500');
+            btn.classList.remove('playing');
             window.timeMatrix.highlightPlayingStep(-1);
             this.updatePlayClock(-1);
             this.renderTrackBar();
@@ -492,7 +481,7 @@ class UIController {
         const m = document.getElementById('main-menu');
         if(m) { 
             m.classList.toggle('hidden'); 
-            m.classList.toggle('flex'); 
+            m.classList.toggle('flex-center'); // Uses CSS class for centering
         }
     }
 
@@ -500,7 +489,7 @@ class UIController {
         const m = document.getElementById('export-modal');
         if(m) { 
             m.classList.toggle('hidden'); 
-            m.classList.toggle('flex'); 
+            m.classList.toggle('flex-center');
         }
     }
 
@@ -508,17 +497,15 @@ class UIController {
         const m = document.getElementById('memory-modal');
         if(m) {
             m.classList.toggle('hidden');
-            m.classList.toggle('flex');
+            m.classList.toggle('flex-center');
         }
     }
 
     // --- 4. VISUAL RENDER LOOP ---
 
     renderLoop() {
-        // Process queue from Audio Engine
         while(window.visualQueue && window.visualQueue.length > 0) {
             const now = window.audioEngine.ctx.currentTime;
-            // Peek
             if(window.visualQueue[0].time <= now) {
                 const ev = window.visualQueue.shift();
                 this.processVisualEvent(ev);
@@ -593,8 +580,8 @@ class UIController {
         // Waveform Button
         const wvBtn = document.getElementById('btn-waveform');
         if(wvBtn) {
-            if(p.waveform === 'square') wvBtn.innerHTML = '<span class="text-xl font-bold leading-none mb-0.5">Π</span><span>SQR</span>';
-            else wvBtn.innerHTML = '<span class="text-xl font-bold leading-none mb-0.5">~</span><span>SAW</span>';
+            if(p.waveform === 'square') wvBtn.innerHTML = '<span class="wave-icon">Π</span><span>SQR</span>';
+            else wvBtn.innerHTML = '<span class="wave-icon">~</span><span>SAW</span>';
         }
     }
 
@@ -622,15 +609,16 @@ class UIController {
 
         const slideBtn = document.getElementById('btn-toggle-slide');
         const accBtn = document.getElementById('btn-toggle-accent');
-        if(slideBtn) slideBtn.classList.remove('text-green-400', 'border-green-600');
-        if(accBtn) accBtn.classList.remove('text-green-400', 'border-green-600');
+        
+        if(slideBtn) slideBtn.classList.remove('active');
+        if(accBtn) accBtn.classList.remove('active');
 
         if(window.AppState.activeView !== 'drum') {
             const blk = window.timeMatrix.blocks[window.AppState.editingBlock];
             const noteData = blk.tracks[window.AppState.activeView] ? blk.tracks[window.AppState.activeView][window.AppState.selectedStep] : null;
             if(noteData) {
-                if(noteData.slide && slideBtn) slideBtn.classList.add('text-green-400', 'border-green-600');
-                if(noteData.accent && accBtn) accBtn.classList.add('text-green-400', 'border-green-600');
+                if(noteData.slide && slideBtn) slideBtn.classList.add('active');
+                if(noteData.accent && accBtn) accBtn.classList.add('active');
             }
         }
 
@@ -655,7 +643,12 @@ class UIController {
             const isEditing = i === window.AppState.editingBlock;
             const isPlaying = window.AppState.isPlaying && i === window.AppState.currentPlayBlock;
             
-            el.className = `track-block ${isEditing ? 'track-block-editing' : ''} ${isPlaying ? 'track-block-playing' : ''}`;
+            // Usamos clases semánticas
+            let classes = 'track-block';
+            if(isEditing) classes += ' track-block-editing';
+            if(isPlaying) classes += ' track-block-playing';
+            
+            el.className = classes;
             el.innerText = i + 1;
             el.onclick = () => { 
                 window.AppState.editingBlock = i; 
@@ -674,7 +667,7 @@ class UIController {
         window.audioEngine.bassSynths.forEach(s => {
             const b = document.createElement('button');
             const active = window.AppState.activeView === s.id;
-            b.className = `px-3 py-1 text-[10px] font-bold border uppercase transition-all ${active ? 'text-green-400 bg-gray-900 border-green-500 shadow-md' : 'text-gray-500 border-transparent hover:text-gray-300'}`;
+            b.className = active ? 'tab-btn tab-btn-active' : 'tab-btn';
             b.innerText = s.id;
             b.onclick = () => this.setTab(s.id);
             c.appendChild(b);
@@ -682,7 +675,7 @@ class UIController {
 
         const d = document.createElement('button');
         const dActive = window.AppState.activeView === 'drum';
-        d.className = `px-3 py-1 text-[10px] font-bold border uppercase transition-all ${dActive ? 'text-green-400 bg-gray-900 border-green-500 shadow-md' : 'text-gray-500 border-transparent hover:text-gray-300'}`;
+        d.className = dActive ? 'tab-btn tab-btn-active' : 'tab-btn';
         d.innerText = "DRUMS";
         d.onclick = () => this.setTab('drum');
         c.appendChild(d);
@@ -701,8 +694,12 @@ class UIController {
         kits.forEach(k => {
             const act = cur.includes(k.id);
             const b = document.createElement('button');
-            b.className = `w-full py-2 px-3 mb-1 border flex justify-between items-center text-[10px] ${act ? 'bg-gray-900 border-green-700 text-green-400' : 'bg-transparent border-gray-800 text-gray-500'}`;
-            b.innerHTML = `<span>${k.name}</span><div class="w-2 h-2 rounded-full" style="background:${k.color}"></div>`;
+            b.className = act ? 'drum-row drum-row-active' : 'drum-row';
+            
+            // Visualización del círculo de color
+            const colorDot = `<div class="drum-indicator" style="background-color: ${k.color}; box-shadow: 0 0 5px ${k.color};"></div>`;
+            b.innerHTML = `<span>${k.name}</span>${colorDot}`;
+            
             b.onclick = () => {
                 if(window.audioEngine) window.audioEngine.resume();
                 
@@ -725,8 +722,8 @@ class UIController {
         
         window.audioEngine.bassSynths.forEach(s => {
             const r = document.createElement('div');
-            r.className = 'flex justify-between bg-black p-2 border border-gray-800 text-xs';
-            r.innerHTML = `<span class="text-green-500">${s.id}</span><button class="text-red-500" onclick="window.removeBassSynth('${s.id}')">X</button>`;
+            r.className = 'menu-list-item';
+            r.innerHTML = `<span class="text-green">${s.id}</span><button class="btn-remove-synth" onclick="window.removeBassSynth('${s.id}')">X</button>`;
             c.appendChild(r);
         });
     }
@@ -742,8 +739,9 @@ class UIController {
 
     togglePanelState() {
         window.AppState.panelCollapsed = !window.AppState.panelCollapsed;
-        const p = document.getElementById('editor-panel');
         const btn = document.getElementById('btn-minimize-panel');
+        const p = document.getElementById('editor-panel');
+        
         if(window.AppState.panelCollapsed) {
             p.classList.remove('panel-expanded');
             p.classList.add('panel-collapsed');
@@ -769,13 +767,8 @@ class UIController {
 
         const setBtn = (btn, active) => {
             if(!btn) return;
-            if(active) {
-                btn.classList.add('text-green-400', 'bg-green-900/20', 'border-green-500/50');
-                btn.classList.remove('text-gray-600', 'bg-transparent', 'border-gray-800');
-            } else {
-                btn.classList.remove('text-green-400', 'bg-green-900/20', 'border-green-500/50');
-                btn.classList.add('text-gray-600', 'bg-transparent', 'border-gray-800');
-            }
+            if(active) btn.classList.add('active');
+            else btn.classList.remove('active');
         };
 
         if(pKeys) {
@@ -796,12 +789,10 @@ class UIController {
         const btn = document.getElementById('btn-toggle-visualizer');
         if(window.AppState.followPlayback) {
             btn.innerText = "VISUALIZER: ON";
-            btn.classList.remove('border-gray-700', 'text-gray-400');
-            btn.classList.add('border-green-500', 'text-green-400', 'bg-green-900/20');
+            btn.classList.add('mode-active');
         } else {
             btn.innerText = "VISUALIZER: OFF";
-            btn.classList.remove('border-green-500', 'text-green-400', 'bg-green-900/20');
-            btn.classList.add('border-gray-700', 'text-gray-400');
+            btn.classList.remove('mode-active');
         }
     }
 
@@ -813,12 +804,12 @@ class UIController {
         
         if(window.AppState.uiMode === 'digital') {
             btn.innerText = "UI MODE: DIGITAL";
-            btn.classList.add('border-green-500', 'text-green-300');
+            btn.classList.add('mode-active');
             analogP.classList.add('hidden');
             digitalP.classList.remove('hidden');
         } else {
             btn.innerText = "UI MODE: ANALOG";
-            btn.classList.remove('border-green-500', 'text-green-300');
+            btn.classList.remove('mode-active');
             analogP.classList.remove('hidden');
             digitalP.classList.add('hidden');
         }
