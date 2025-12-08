@@ -1,7 +1,7 @@
 /*
- * AUDIO ENGINE MODULE (v38 - Stable WAV Export)
+ * AUDIO ENGINE MODULE (v37 - Drum Mix Support)
  * Handles AudioContext, Scheduling, Synthesis, and Rendering.
- * Updated: Robust PCM16 WAV Header Generation.
+ * Updated to support Drum Volume Mixing & Variants in Offline Render.
  */
 
 class AudioEngine {
@@ -56,7 +56,7 @@ class AudioEngine {
     initWorker() {
         if (this.clockWorker) return;
         try {
-            this.clockWorker = new Worker('clock_worker.js');
+            this.clockWorker = new Worker('Synth/clock_worker.js');
             this.clockWorker.onmessage = (e) => {
                 if (e.data === "tick") this.scheduler();
             };
@@ -150,6 +150,7 @@ class AudioEngine {
 
         // Play Drums
         if (data.drums && window.drumSynth) {
+            // Note: Timematrix v37 will send channel IDs (0-8) here
             data.drums.forEach(id => window.drumSynth.play(id, time));
         }
 
@@ -203,7 +204,7 @@ class AudioEngine {
             
             const secPerStep = (60.0 / bpm) / 4;
             const totalSteps = stepsPerBlock * totalBlocks * reps;
-            const duration = totalSteps * secPerStep + 2.0; // +2s tail
+            const duration = totalSteps * secPerStep + 2.0;
 
             const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
             const offCtx = new OfflineCtx(2, 44100 * duration, 44100);
@@ -226,14 +227,18 @@ class AudioEngine {
                 offBassSynths.push(s);
             });
 
-            // 2. CLONE DRUM SYNTH
+            // 2. CLONE DRUM SYNTH (NEW)
             const offDrum = new window.DrumSynth();
             offDrum.init(offCtx, offMaster);
             
+            // Sync Drum State (Master Vol + Channel Configs)
             if (window.drumSynth) {
                 offDrum.setMasterVolume(window.drumSynth.masterVolume);
+                
                 window.drumSynth.channels.forEach(ch => {
+                    // Copy Volume
                     offDrum.setChannelVolume(ch.id, ch.volume);
+                    // Copy Variant
                     offDrum.setChannelVariant(ch.id, ch.variant);
                 });
             }
@@ -281,56 +286,34 @@ class AudioEngine {
         }
     }
 
-    // --- REWRITTEN WAV ENCODER (Robust PCM16) ---
     bufferToWave(abuffer, len) {
-        const numOfChan = abuffer.numberOfChannels;
-        const length = len * numOfChan * 2 + 44;
-        const buffer = new ArrayBuffer(length);
-        const view = new DataView(buffer);
-        const channels = [];
-        let i, sample;
-        let offset = 0;
-        let pos = 0;
+        let numOfChan = abuffer.numberOfChannels,
+            length = len * numOfChan * 2 + 44,
+            buffer = new ArrayBuffer(length),
+            view = new DataView(buffer),
+            channels = [], i, sample,
+            offset = 0, pos = 0;
 
-        // Helper functions
         function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
         function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
 
-        // 1. RIFF CHUNK
-        setUint32(0x46464952);                         // "RIFF"
-        setUint32(length - 8);                         // file length - 8
-        setUint32(0x45564157);                         // "WAVE"
+        setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+        setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+        setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164);
+        setUint32(length - pos - 4);
 
-        // 2. FMT CHUNK
-        setUint32(0x20746d66);                         // "fmt "
-        setUint32(16);                                 // size = 16
-        setUint16(1);                                  // PCM (uncompressed)
-        setUint16(numOfChan);                          // channel count
-        setUint32(abuffer.sampleRate);                 // sample rate
-        setUint32(abuffer.sampleRate * 2 * numOfChan); // byte rate
-        setUint16(numOfChan * 2);                      // block align
-        setUint16(16);                                 // bits per sample
-
-        // 3. DATA CHUNK
-        setUint32(0x61746164);                         // "data"
-        setUint32(length - pos - 4);                   // chunk size
-
-        // 4. INTERLEAVE & CONVERT
         for(i = 0; i < numOfChan; i++) channels.push(abuffer.getChannelData(i));
 
         while(pos < length) {
             for(i = 0; i < numOfChan; i++) {
-                // Clamp and convert float32 to int16 PCM
                 sample = Math.max(-1, Math.min(1, channels[i][offset])); 
-                // Using 0x7FFF helps prevent clipping distortion at max volume
-                sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; 
-                view.setInt16(pos, sample, true); 
-                pos += 2;
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; 
+                view.setInt16(pos, sample, true); pos += 2;
             }
             offset++;
         }
-        
-        return new Blob([buffer], { type: "audio/wav" });
+        return new Blob([buffer], {type: "audio/wav"});
     }
 }
 
