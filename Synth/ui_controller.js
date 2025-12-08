@@ -1,7 +1,7 @@
 /*
- * UI CONTROLLER MODULE (v32 - Semantic UI & Offline)
+ * UI CONTROLLER MODULE (v33 - Semantic UI Refactor)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
- * Removed Tailwind dependencies in favor of native semantic CSS.
+ * Cleaned of Tailwind dependencies. Uses native semantic classes.
  */
 
 class UIController {
@@ -69,7 +69,6 @@ class UIController {
         this.safeClick('btn-close-memory', () => this.toggleMemoryModal());
 
         // --- CSV ACTIONS ---
-        
         this.safeClick('btn-gen-csv', () => {
             if(window.timeMatrix) {
                 const csvData = window.timeMatrix.exportToCSV();
@@ -85,6 +84,7 @@ class UIController {
                 const success = window.timeMatrix.importFromCSV(area.value);
                 
                 if(success) {
+                    // Sync Audio Engine
                     if(window.audioEngine && typeof window.audioEngine.syncWithMatrix === 'function') {
                         window.audioEngine.syncWithMatrix(window.timeMatrix);
                     }
@@ -99,6 +99,7 @@ class UIController {
                     this.updateEditors();
                     this.renderSynthMenu();
                     
+                    // Set active view
                     if(window.audioEngine && window.audioEngine.bassSynths.length > 0) {
                         this.setTab(window.audioEngine.bassSynths[0].id);
                     } else {
@@ -481,7 +482,7 @@ class UIController {
         const m = document.getElementById('main-menu');
         if(m) { 
             m.classList.toggle('hidden'); 
-            m.classList.toggle('flex-center'); // Uses CSS class for centering
+            m.classList.toggle('flex-center'); // Requires .flex-center { display: flex; align-items:center; justify-content:center; } in CSS
         }
     }
 
@@ -645,8 +646,8 @@ class UIController {
             
             // Usamos clases semánticas
             let classes = 'track-block';
-            if(isEditing) classes += ' track-block-editing';
-            if(isPlaying) classes += ' track-block-playing';
+            if(isEditing) classes += ' editing';
+            if(isPlaying) classes += ' playing';
             
             el.className = classes;
             el.innerText = i + 1;
@@ -667,7 +668,7 @@ class UIController {
         window.audioEngine.bassSynths.forEach(s => {
             const b = document.createElement('button');
             const active = window.AppState.activeView === s.id;
-            b.className = active ? 'tab-btn tab-btn-active' : 'tab-btn';
+            b.className = active ? 'tab-btn active' : 'tab-btn';
             b.innerText = s.id;
             b.onclick = () => this.setTab(s.id);
             c.appendChild(b);
@@ -675,7 +676,7 @@ class UIController {
 
         const d = document.createElement('button');
         const dActive = window.AppState.activeView === 'drum';
-        d.className = dActive ? 'tab-btn tab-btn-active' : 'tab-btn';
+        d.className = dActive ? 'tab-btn active' : 'tab-btn';
         d.innerText = "DRUMS";
         d.onclick = () => this.setTab('drum');
         c.appendChild(d);
@@ -694,7 +695,7 @@ class UIController {
         kits.forEach(k => {
             const act = cur.includes(k.id);
             const b = document.createElement('button');
-            b.className = act ? 'drum-row drum-row-active' : 'drum-row';
+            b.className = act ? 'drum-row active' : 'drum-row';
             
             // Visualización del círculo de color
             const colorDot = `<div class="drum-indicator" style="background-color: ${k.color}; box-shadow: 0 0 5px ${k.color};"></div>`;
@@ -789,10 +790,10 @@ class UIController {
         const btn = document.getElementById('btn-toggle-visualizer');
         if(window.AppState.followPlayback) {
             btn.innerText = "VISUALIZER: ON";
-            btn.classList.add('mode-active');
+            btn.classList.add('active');
         } else {
             btn.innerText = "VISUALIZER: OFF";
-            btn.classList.remove('mode-active');
+            btn.classList.remove('active');
         }
     }
 
@@ -804,12 +805,12 @@ class UIController {
         
         if(window.AppState.uiMode === 'digital') {
             btn.innerText = "UI MODE: DIGITAL";
-            btn.classList.add('mode-active');
+            btn.classList.add('active');
             analogP.classList.add('hidden');
             digitalP.classList.remove('hidden');
         } else {
             btn.innerText = "UI MODE: ANALOG";
-            btn.classList.remove('mode-active');
+            btn.classList.remove('active');
             analogP.classList.remove('hidden');
             digitalP.classList.add('hidden');
         }
