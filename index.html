@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeuroDark23 | Light Dark Edition</title>
+    <title>NeuroDark23 | v37 Drum Update</title>
     <link rel="stylesheet" href="style.css">
     
+    <!-- SYSTEM LOGGER -->
     <script>
         window.logToScreen = function(msg, type='info') {
             const consoleEl = document.getElementById('sys-log-content');
@@ -40,7 +41,7 @@
             </div>
         </div>
         <div id="sys-log-content" class="terminal-body custom-scroll">
-            <div class="log-init">System Ready. Audio Engine Standby...</div>
+            <div class="log-init">System Ready. Initializing Audio Engine v37...</div>
         </div>
     </div>
 
@@ -64,7 +65,7 @@
         </div>
     </div>
 
-    <!-- MODAL: MEMORY -->
+    <!-- MODAL: MEMORY (CSV) -->
     <div id="memory-modal" class="modal-overlay hidden">
         <div class="modal-window border-purple modal-wide">
             <h2 class="modal-header text-purple">VIRTUAL MEMORY</h2>
@@ -95,19 +96,32 @@
     <!-- MAIN MENU -->
     <div id="main-menu" class="modal-overlay hidden">
         <div class="menu-container">
-            <h2 class="menu-logo">MENU</h2>
+            <h2 class="menu-logo">MENU CONFIG</h2>
             
+            <!-- GLOBAL SETTINGS -->
             <div class="menu-section">
                  <button id="btn-toggle-ui-mode" class="btn-menu-toggle">UI MODE: ANALOG</button>
                  <button id="btn-toggle-visualizer" class="btn-menu-toggle">VISUALIZER: OFF</button>
             </div>
 
+            <!-- BASS MODULES -->
             <div class="menu-section">
-                <h3 class="section-label">MODULES</h3>
+                <h3 class="section-label">BASS SYNTHS</h3>
                 <div id="synth-list-container" class="list-vertical"></div>
                 <button id="btn-add-synth" class="btn-dashed">+ ADD BASS</button>
             </div>
 
+            <!-- NEW: DRUM CONFIGURATION -->
+            <div class="menu-section">
+                <h3 class="section-label">DRUM CONFIGURATION</h3>
+                <div class="drum-config-header">
+                    <span>CH</span><span>VARIANT</span><span>COLOR</span>
+                </div>
+                <!-- Container for dynamic drum rows (injected by JS) -->
+                <div id="drum-config-container" class="drum-config-grid custom-scroll"></div>
+            </div>
+
+            <!-- SYSTEM ACTIONS -->
             <div class="menu-section vertical-stack">
                 <button id="btn-open-memory" class="btn-menu-action text-purple">VIRTUAL MEMORY</button>
                 <button id="btn-open-export" class="btn-menu-action text-green">EXPORT WAV</button>
@@ -115,6 +129,7 @@
                 <button id="btn-menu-clear" class="btn-menu-action text-red-dim">CLEAR PATTERN</button>
                 <button id="btn-menu-panic" class="btn-menu-action text-red bg-red-dim">RESET SYSTEM</button>
             </div>
+            
             <button id="btn-menu-close" class="btn-resume">RESUME</button>
         </div>
     </div>
@@ -274,7 +289,7 @@
                 </div>
             </div>
 
-            <!-- DRUM EDITOR -->
+            <!-- DRUM EDITOR (Dynamic Content injected by JS) -->
             <div id="editor-drum" class="editor-content-drum hidden custom-scroll"></div>
         </div>
     </div>
