@@ -1,6 +1,6 @@
-/* * NEURODARK 23 - STYLE CORE (v37 - Drum Overhaul)
+/* * NEURODARK 23 - STYLE CORE (v38 - Drum Grid & Logic Update)
  * Theme: Cyberpunk Industrial / High Contrast
- * Updated for Dynamic Drums & Config Menu
+ * Updated for: 2-Col Drum Grid, Color Swapping, Numeric Inputs
  */
 
 :root {
@@ -233,39 +233,94 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .pos-1 { left: 14.28%; } .pos-2 { left: 28.57%; } .pos-3 { left: 57.14%; } .pos-4 { left: 71.42%; } .pos-5 { left: 85.71%; }
 .btn-delete-note { width: 100%; padding: 6px; background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: var(--c-red); font-size: 10px; font-weight: 800; border-radius: 3px; }
 
-/* --- DRUM EDITOR (NEW LAYOUT) --- */
-.editor-content-drum { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+/* --- DRUM EDITOR (UPDATED: 2-COL GRID) --- */
+.editor-content-drum {
+    padding: 16px;
+    overflow-y: auto;
+    display: grid; 
+    grid-template-columns: 1fr 1fr; /* Two Columns */
+    gap: 8px;
+    align-content: start;
+}
 
 /* Master Vol Header */
 .drum-master-panel {
     background: #111; border: 1px solid #333; padding: 8px 12px;
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 8px; border-radius: 3px;
+    grid-column: 1 / -1; /* Spans full width */
 }
 .drum-master-label { color: #888; font-weight: 800; font-size: 10px; }
 
 /* Drum Rows */
 .drum-row {
     display: flex; align-items: center; justify-content: space-between;
-    width: 100%; padding: 6px 12px;
+    width: 100%; padding: 6px 8px;
     background: #1a1a1a; border: 1px solid var(--border-dim);
     border-radius: 3px; transition: all 0.1s;
+    /* Grid item behavior implied */
 }
 .drum-row:hover { border-color: #555; background: #222; }
 .drum-row.active { background: #252525; border-color: #666; }
 
-.drum-info { display: flex; align-items: center; gap: 10px; flex: 1; }
-.drum-color-tag { width: 4px; height: 16px; border-radius: 2px; }
-.drum-label { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 0.1em; }
+.drum-info { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
+.drum-color-tag { width: 4px; height: 16px; border-radius: 2px; transition: all 0.2s; }
+.drum-label { font-size: 10px; font-weight: 800; color: #888; letter-spacing: 0.05em; }
 .drum-row.active .drum-label { color: #eee; }
 
-/* Horizontal Vol Control */
-.drum-vol-ctrl { display: flex; gap: 2px; align-items: center; margin-left: 10px; }
+/* Horizontal Vol Control with Inputs */
+.drum-vol-ctrl { display: flex; gap: 2px; align-items: center; margin-left: 6px; }
 .drum-vol-btn { width: 18px; height: 18px; background: #111; border: 1px solid #333; color: #666; font-size: 10px; border-radius: 2px; }
 .drum-vol-btn:active { background: #333; color: #fff; }
-.drum-vol-display { width: 30px; text-align: center; color: var(--c-green); font-weight: bold; font-size: 11px; background: #000; border: 1px solid #222; padding: 2px 0; border-radius: 2px; }
 
-/* --- CONFIG MENU --- */
+.drum-vol-input {
+    width: 34px; 
+    text-align: center; 
+    color: var(--c-green); 
+    font-weight: bold; 
+    font-size: 11px; 
+    background: #000; 
+    border: 1px solid #222; 
+    padding: 2px 0; 
+    border-radius: 2px;
+    -moz-appearance: textfield; /* Remove Arrows FF */
+}
+.drum-vol-input::-webkit-outer-spin-button,
+.drum-vol-input::-webkit-inner-spin-button {
+    -webkit-appearance: none; /* Remove Arrows Chrome */
+    margin: 0;
+}
+.drum-vol-input:focus { border-color: var(--c-green); }
+
+/* --- COLOR SWAP ANIMATION --- */
+@keyframes blink-swapping {
+    0% { opacity: 1; box-shadow: 0 0 0 transparent; }
+    50% { opacity: 0.5; box-shadow: 0 0 10px #fff; }
+    100% { opacity: 1; box-shadow: 0 0 0 transparent; }
+}
+.color-swapping {
+    animation: blink-swapping 0.6s infinite;
+    border: 1px solid #fff !important;
+    z-index: 10;
+}
+
+/* --- CONFIG MENU UPDATES --- */
+.menu-group-header {
+    background: #222;
+    padding: 8px 12px;
+    border: 1px solid #333;
+    font-size: 10px;
+    font-weight: 800;
+    color: #ccc;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.menu-group-header:hover { background: #2a2a2a; color: #fff; }
+.menu-group-content.collapsed { display: none; }
+
 .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
 .modal-window, .menu-container { background: #1a1a1a; border: 1px solid #444; padding: 24px; width: 340px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); position: relative; max-height: 90vh; overflow-y: auto; }
 .modal-wide { width: 90%; max-width: 600px; }
