@@ -1,6 +1,6 @@
-/* * NEURODARK 23 - STYLE CORE (v39 - UI Refine)
+/* * NEURODARK 23 - STYLE CORE (v40 - UI Fixes)
  * Theme: Cyberpunk Industrial / High Contrast
- * Updated: Centered Transport, Header Controls Unified
+ * Updated: Waveform visibility logic & Play Button Centering
  */
 
 :root {
@@ -110,7 +110,7 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .input-bpm { border-bottom: 1px solid var(--border-mid); color: var(--c-green); font-size: 2rem; font-weight: 700; width: 80px; text-align: center; }
 .input-bpm:focus { border-color: var(--c-green); }
 
-/* TRANSPORT CENTER (Updated for perfect alignment) */
+/* TRANSPORT CENTER (FIXED ALIGNMENT) */
 .transport-center {
     position: relative;
     width: 80px; height: 80px;
@@ -131,12 +131,12 @@ input { font-family: inherit; background: transparent; border: none; outline: no
     transition: all 0.1s;
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     
-    /* Flex alignment for content */
+    /* Exact centering */
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Optical correction for the triangle symbol */
-    padding-left: 4px; 
+    padding: 0; /* Removed optical padding that caused off-center look */
+    line-height: 1;
 }
 
 .btn-transport-play:hover { color: #fff; border-color: #777; }
@@ -144,8 +144,6 @@ input { font-family: inherit; background: transparent; border: none; outline: no
     color: var(--c-green);
     border-color: var(--c-green);
     box-shadow: 0 0 12px var(--c-green-dim);
-    /* Remove optical correction for the pause symbol */
-    padding-left: 0;
 }
 
 .block-counter { background: #111; border: 1px solid var(--border-dim); padding: 4px 10px; border-radius: var(--radius); font-family: monospace; font-size: 14px; }
@@ -203,18 +201,26 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .expanded { height: auto; max-height: 80vh; }
 .collapsed { height: 2.2rem; overflow: hidden; }
 
-/* Drawer Header Updated Layout */
+/* Drawer Header */
 .drawer-header {
     height: 2.2rem; background: #111; border-bottom: 1px solid var(--border-dim);
     display: flex; align-items: center; justify-content: space-between; padding: 0 16px; cursor: pointer;
 }
 .drawer-title { font-size: 10px; letter-spacing: 0.2em; color: #888; }
 
-/* New Unified Header Actions */
 .drawer-actions { display: flex; align-items: center; gap: 8px; }
 .view-toggles { display: flex; gap: 4px; }
+.tools-group { display: flex; align-items: center; gap: 8px; }
 
-/* Unified Pill Button Style (Used for Waveform, Keys, FX) */
+/* SMART VISIBILITY LOGIC:
+   If the #editor-bass panel is hidden (because we are in drums mode),
+   then hide the #bass-tools-group in the header automatically.
+*/
+.editor-drawer:has(#editor-bass.hidden) #bass-tools-group {
+    display: none;
+}
+
+/* Unified Pill Button Style */
 .btn-pill {
     background: #222;
     border: 1px solid #333;
@@ -269,7 +275,6 @@ input { font-family: inherit; background: transparent; border: none; outline: no
 .btn-mod { padding: 0 10px; background: #222; border: 1px solid #333; color: #aaa; font-size: 10px; font-weight: 700; border-radius: 2px; }
 .btn-mod.active { background: var(--c-green-dim); border-color: var(--c-green); color: var(--c-green); }
 
-/* Waveform Symbol inside btn-pill */
 .wave-symbol { font-weight: bold; font-size: 14px; margin-right: 4px; }
 
 .piano-bed { position: relative; height: 80px; margin-bottom: 8px; }
