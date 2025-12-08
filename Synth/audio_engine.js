@@ -1,7 +1,6 @@
 /*
- * AUDIO ENGINE MODULE (v31.1 - Matrix Sync Fix)
+ * AUDIO ENGINE MODULE (v35 - Stable Sync)
  * Handles AudioContext, Scheduling, Synthesis, and Rendering.
- * Includes sync logic for CSV imports.
  */
 
 class AudioEngine {
@@ -11,25 +10,20 @@ class AudioEngine {
         this.compressor = null;
         this.clockWorker = null;
         this.bassSynths = [];
-        
-        // Scheduler State
         this.nextNoteTime = 0.0;
-        this.lookahead = 0.1; // seconds
-        this.scheduleAheadTime = 0.1; // seconds
-        this.interval = 25.0; // ms (Worker tick)
+        this.lookahead = 0.1;
+        this.scheduleAheadTime = 0.1;
+        this.interval = 25.0; 
     }
 
-    // --- INITIALIZATION ---
     init() {
-        if (this.ctx) return; // Already initialized
-
+        if (this.ctx) return; 
         try {
             const AC = window.AudioContext || window.webkitAudioContext;
             this.ctx = new AC({ latencyHint: 'interactive' });
             
-            // Master Chain: MasterGain -> Compressor -> Destination
             this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.6; // Headroom
+            this.masterGain.gain.value = 0.6;
 
             this.compressor = this.ctx.createDynamicsCompressor();
             this.compressor.threshold.value = -3;
@@ -41,10 +35,7 @@ class AudioEngine {
             this.masterGain.connect(this.compressor);
             this.compressor.connect(this.ctx.destination);
 
-            // Initialize Synths
             this.initSynths();
-
-            // Initialize Clock Worker
             this.initWorker();
             
             if(window.logToScreen) window.logToScreen("Audio Engine Initialized");
@@ -55,30 +46,17 @@ class AudioEngine {
     }
 
     initSynths() {
-        // Bass Synths
-        // Ensure at least one synth exists
-        if (this.bassSynths.length === 0) {
-            this.addBassSynth('bass-1');
-        } else {
-            // Re-init existing if needed
-            this.bassSynths.forEach(s => s.init(this.ctx, this.masterGain));
-        }
-
-        // Drum Synth
-        if (window.drumSynth) {
-            window.drumSynth.init(this.ctx, this.masterGain);
-        }
+        if (this.bassSynths.length === 0) this.addBassSynth('bass-1');
+        else this.bassSynths.forEach(s => s.init(this.ctx, this.masterGain));
+        if (window.drumSynth) window.drumSynth.init(this.ctx, this.masterGain);
     }
 
     initWorker() {
         if (this.clockWorker) return;
         try {
-            // Adjust path if necessary based on your folder structure
             this.clockWorker = new Worker('Synth/clock_worker.js');
             this.clockWorker.onmessage = (e) => {
-                if (e.data === "tick") {
-                    this.scheduler();
-                }
+                if (e.data === "tick") this.scheduler();
             };
             this.clockWorker.postMessage({ interval: this.interval });
         } catch (e) {
@@ -87,31 +65,19 @@ class AudioEngine {
     }
 
     resume() {
-        if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
     }
 
-    // --- SYNTH MANAGEMENT ---
     addBassSynth(id) {
         if (this.bassSynths.find(s => s.id === id)) return;
-        
         const s = new window.BassSynth(id);
         if (this.ctx) s.init(this.ctx, this.masterGain);
         this.bassSynths.push(s);
-        
-        // Register in Matrix if not present
-        if (window.timeMatrix && window.timeMatrix.registerTrack) {
-            window.timeMatrix.registerTrack(id);
-        }
-        
+        if (window.timeMatrix && window.timeMatrix.registerTrack) window.timeMatrix.registerTrack(id);
         return s;
     }
 
     removeSynth(id) {
-        if (this.bassSynths.length <= 1) {
-            // window.logToScreen("Cannot remove last synth", 'warn'); 
-        }
         const idx = this.bassSynths.findIndex(s => s.id === id);
         if (idx > -1) {
             this.bassSynths.splice(idx, 1);
@@ -125,53 +91,36 @@ class AudioEngine {
         return this.bassSynths.find(s => s.id === id);
     }
 
-    /**
-     * Sincroniza los sintetizadores activos con los datos cargados en la matriz.
-     * ESTA ES LA FUNCIÓN QUE FALTABA O NO SE LEÍA CORRECTAMENTE
-     */
+    // --- CRITICAL FUNCTION FOR CSV IMPORT ---
     syncWithMatrix(matrix) {
         if (!matrix) return;
-        console.log("AudioEngine: Syncing with Matrix...");
-
-        // 1. Identificar qué tracks existen en la matriz cargada
+        // 1. Get active tracks from matrix
         const activeIds = new Set();
         matrix.blocks.forEach(b => {
-            if(b.tracks) {
-                Object.keys(b.tracks).forEach(id => activeIds.add(id));
-            }
+            if(b.tracks) Object.keys(b.tracks).forEach(id => activeIds.add(id));
         });
 
-        // 2. Eliminar sintes del motor que NO están en la matriz
-        // Iteramos hacia atrás para borrar sin romper índices
+        // 2. Remove Synths NOT in matrix
         for (let i = this.bassSynths.length - 1; i >= 0; i--) {
             const synth = this.bassSynths[i];
-            if (!activeIds.has(synth.id)) {
-                this.bassSynths.splice(i, 1);
-            }
+            if (!activeIds.has(synth.id)) this.bassSynths.splice(i, 1);
         }
 
-        // 3. Añadir sintes que están en la matriz pero NO en el motor
+        // 3. Add Synths IN matrix
         activeIds.forEach(id => {
-            if (!this.getSynth(id)) {
-                this.addBassSynth(id);
-            }
+            if (!this.getSynth(id)) this.addBassSynth(id);
         });
     }
 
-    // --- TRANSPORT CONTROLS ---
+    // --- TRANSPORT ---
     startPlayback() {
         this.resume();
         if (!this.ctx) this.init();
-
         window.AppState.isPlaying = true;
         window.AppState.currentPlayStep = 0;
-        
-        // Start from the currently edited block
         window.AppState.currentPlayBlock = window.AppState.editingBlock;
-
         this.nextNoteTime = this.ctx.currentTime + 0.1;
-        window.visualQueue = []; // Clear queue
-
+        window.visualQueue = [];
         if (this.clockWorker) this.clockWorker.postMessage("start");
         if(window.logToScreen) window.logToScreen("PLAY");
     }
@@ -183,56 +132,34 @@ class AudioEngine {
     }
 
     toggleTransport() {
-        if (window.AppState.isPlaying) {
-            this.stopPlayback();
-        } else {
-            this.startPlayback();
-        }
+        if (window.AppState.isPlaying) this.stopPlayback();
+        else this.startPlayback();
         return window.AppState.isPlaying;
     }
 
-    // --- SCHEDULER (Core Logic) ---
+    // --- SCHEDULER ---
     scheduler() {
-        // While there are notes that will play within the lookahead window...
         while (this.nextNoteTime < this.ctx.currentTime + this.lookahead) {
-            this.scheduleNote(
-                window.AppState.currentPlayStep, 
-                window.AppState.currentPlayBlock, 
-                this.nextNoteTime
-            );
+            this.scheduleNote(window.AppState.currentPlayStep, window.AppState.currentPlayBlock, this.nextNoteTime);
             this.advanceNote();
         }
     }
 
     scheduleNote(step, block, time) {
-        // 1. Push to Visual Queue for the UI to render
         window.visualQueue.push({ step, block, time });
-
-        // 2. Get Data
         const data = window.timeMatrix.getStepData(step, block);
         if (!data) return;
 
-        // 3. Play Drums
         if (data.drums && window.drumSynth) {
             data.drums.forEach(id => window.drumSynth.play(id, time));
         }
 
-        // 4. Play Bass Tracks
         if (data.tracks) {
             Object.keys(data.tracks).forEach(tid => {
                 const noteInfo = data.tracks[tid][step];
                 if (noteInfo) {
                     const synth = this.bassSynths.find(s => s.id === tid);
-                    if (synth) {
-                        synth.play(
-                            noteInfo.note, 
-                            noteInfo.octave, 
-                            time, 
-                            0.25, // default duration
-                            noteInfo.slide, 
-                            noteInfo.accent
-                        );
-                    }
+                    if (synth) synth.play(noteInfo.note, noteInfo.octave, time, 0.25, noteInfo.slide, noteInfo.accent);
                 }
             });
         }
@@ -240,45 +167,32 @@ class AudioEngine {
 
     advanceNote() {
         const secPerBeat = 60.0 / window.AppState.bpm;
-        const secPerStep = secPerBeat / 4; // 16th notes
-        
+        const secPerStep = secPerBeat / 4; 
         this.nextNoteTime += secPerStep;
-        
-        // Advance Step
         window.AppState.currentPlayStep++;
         
-        // Loop Block / Song
         if (window.AppState.currentPlayStep >= window.timeMatrix.totalSteps) {
             window.AppState.currentPlayStep = 0;
             window.AppState.currentPlayBlock++;
-            
-            // Loop blocks
             if (window.AppState.currentPlayBlock >= window.timeMatrix.blocks.length) {
                 window.AppState.currentPlayBlock = 0;
             }
         }
     }
 
-    // --- DIRECT PLAY (Preview) ---
     previewNote(synthId, note, octave) {
         this.resume();
         const s = this.getSynth(synthId);
-        if (s) {
-            s.play(note, octave, this.ctx.currentTime);
-        }
+        if (s) s.play(note, octave, this.ctx.currentTime);
     }
 
     previewDrum(drumId) {
         this.resume();
-        if (window.drumSynth) {
-            window.drumSynth.play(drumId, this.ctx.currentTime);
-        }
+        if (window.drumSynth) window.drumSynth.play(drumId, this.ctx.currentTime);
     }
 
-    // --- EXPORT RENDER ---
     async renderAudio() {
         if (window.AppState.isPlaying) this.stopPlayback();
-        
         if(window.logToScreen) window.logToScreen("Starting Offline Render...");
         
         try {
@@ -289,9 +203,8 @@ class AudioEngine {
             
             const secPerStep = (60.0 / bpm) / 4;
             const totalSteps = stepsPerBlock * totalBlocks * reps;
-            const duration = totalSteps * secPerStep + 2.0; // +2s tail
+            const duration = totalSteps * secPerStep + 2.0;
 
-            // Offline Context
             const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
             const offCtx = new OfflineCtx(2, 44100 * duration, 44100);
             
@@ -299,14 +212,11 @@ class AudioEngine {
             offMaster.gain.value = 0.6;
             offMaster.connect(offCtx.destination);
 
-            // Clone Synths for Offline
             const offBassSynths = [];
             this.bassSynths.forEach(liveSynth => {
                 const s = new window.BassSynth(liveSynth.id);
                 s.init(offCtx, offMaster);
-                // Copy Params
                 s.params = { ...liveSynth.params };
-                // Also update the internal FX chain of the offline synth
                 if(s.fxChain) {
                     s.setDistortion(s.params.distortion);
                     s.setDistTone(s.params.distTone);
@@ -318,25 +228,18 @@ class AudioEngine {
             const offDrum = new window.DrumSynth();
             offDrum.init(offCtx, offMaster);
 
-            // Render Loop
             let t = 0.0;
             for (let r = 0; r < reps; r++) {
                 for (let b = 0; b < totalBlocks; b++) {
                     const blk = window.timeMatrix.blocks[b];
                     for (let s = 0; s < stepsPerBlock; s++) {
-                        // Drums
-                        if (blk.drums[s]) {
-                            blk.drums[s].forEach(id => offDrum.play(id, t));
-                        }
-                        // Bass
+                        if (blk.drums[s]) blk.drums[s].forEach(id => offDrum.play(id, t));
                         if (blk.tracks) {
                             Object.keys(blk.tracks).forEach(tid => {
                                 const n = blk.tracks[tid][s];
                                 if (n) {
                                     const syn = offBassSynths.find(k => k.id === tid);
-                                    if (syn) {
-                                        syn.play(n.note, n.octave, t, 0.25, n.slide, n.accent);
-                                    }
+                                    if (syn) syn.play(n.note, n.octave, t, 0.25, n.slide, n.accent);
                                 }
                             });
                         }
@@ -345,28 +248,24 @@ class AudioEngine {
                 }
             }
 
-            // Process
             const renderedBuffer = await offCtx.startRendering();
             const wavBlob = this.bufferToWave(renderedBuffer, renderedBuffer.length);
             
-            // Download
             const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `ND23_Render_${Date.now()}.wav`;
             a.click();
             
-            if(window.logToScreen) window.logToScreen("Render Complete. Downloading...");
+            if(window.logToScreen) window.logToScreen("Render Complete");
             return true;
 
         } catch (e) {
-            if(window.logToScreen) window.logToScreen("Render Failed: " + e, 'error');
             console.error(e);
             return false;
         }
     }
 
-    // Helper: WAV Encoder
     bufferToWave(abuffer, len) {
         let numOfChan = abuffer.numberOfChannels,
             length = len * numOfChan * 2 + 44,
@@ -389,7 +288,6 @@ class AudioEngine {
         while(pos < length) {
             for(i = 0; i < numOfChan; i++) {
                 sample = Math.max(-1, Math.min(1, channels[i][offset])); 
-                // PCM 16bit conversion
                 sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; 
                 view.setInt16(pos, sample, true); pos += 2;
             }
