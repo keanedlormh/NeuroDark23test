@@ -1,7 +1,7 @@
 /*
- * DRUM SYNTH MODULE (v38 - High Contrast Palette)
+ * DRUM SYNTH MODULE (v37 - Multi-Channel Matrix)
  * 9 Independent Channels with Volume Control and Sound Variants.
- * Updated: Distinct Color Palette for UI Swapping.
+ * Pure Synthesis - No Samples.
  */
 
 class DrumSynth {
@@ -15,30 +15,29 @@ class DrumSynth {
         
         // 9 Fixed Slots with Defaults
         // Variants: 0=OFF, 1=Default, 2-8=Alt Sounds
-        // Added colorId to track visual swaps
         this.channels = [
-            { id: 0, type: 'kick',  name: 'KICK',   variant: 1, volume: 90, colorId: 0, gainNode: null },
-            { id: 1, type: 'snare', name: 'SNARE',  variant: 1, volume: 85, colorId: 1, gainNode: null },
-            { id: 2, type: 'clap',  name: 'CLAP',   variant: 1, volume: 80, colorId: 2, gainNode: null },
-            { id: 3, type: 'chat',  name: 'CL.HAT', variant: 1, volume: 75, colorId: 3, gainNode: null },
-            { id: 4, type: 'ohat',  name: 'OP.HAT', variant: 1, volume: 75, colorId: 4, gainNode: null },
-            { id: 5, type: 'ltom',  name: 'LO TOM', variant: 1, volume: 80, colorId: 5, gainNode: null },
-            { id: 6, type: 'htom',  name: 'HI TOM', variant: 1, volume: 80, colorId: 6, gainNode: null },
-            { id: 7, type: 'crash', name: 'CRASH',  variant: 1, volume: 70, colorId: 7, gainNode: null },
-            { id: 8, type: 'perc',  name: 'PERC',   variant: 1, volume: 75, colorId: 8, gainNode: null }
+            { id: 0, type: 'kick',  name: 'KICK',   variant: 1, volume: 90, gainNode: null },
+            { id: 1, type: 'snare', name: 'SNARE',  variant: 1, volume: 85, gainNode: null },
+            { id: 2, type: 'clap',  name: 'CLAP',   variant: 1, volume: 80, gainNode: null },
+            { id: 3, type: 'chat',  name: 'CL.HAT', variant: 1, volume: 75, gainNode: null },
+            { id: 4, type: 'ohat',  name: 'OP.HAT', variant: 1, volume: 75, gainNode: null },
+            { id: 5, type: 'ltom',  name: 'LO TOM', variant: 1, volume: 80, gainNode: null },
+            { id: 6, type: 'htom',  name: 'HI TOM', variant: 1, volume: 80, gainNode: null },
+            { id: 7, type: 'crash', name: 'CRASH',  variant: 1, volume: 70, gainNode: null },
+            { id: 8, type: 'perc',  name: 'PERC',   variant: 1, volume: 75, gainNode: null }
         ];
 
-        // Updated High Contrast Palette (Matches style.css v38)
+        // Default DnB Color Palette (can be overridden by UI)
         this.channelColors = [
-            'hsl(0, 100%, 60%)',    // 0: Red
-            'hsl(30, 100%, 55%)',   // 1: Orange
-            'hsl(60, 100%, 50%)',   // 2: Yellow
-            'hsl(100, 100%, 50%)',  // 3: Lime
-            'hsl(150, 100%, 50%)',  // 4: Spring Green
-            'hsl(190, 100%, 50%)',  // 5: Cyan
-            'hsl(220, 100%, 60%)',  // 6: Azure Blue
-            'hsl(270, 100%, 65%)',  // 7: Purple
-            'hsl(320, 100%, 60%)'   // 8: Pink
+            'hsl(0, 100%, 60%)',   // Red
+            'hsl(40, 100%, 50%)',  // Orange
+            'hsl(40, 100%, 60%)',  // Orange-Yellow (Clap)
+            'hsl(180, 100%, 50%)', // Cyan
+            'hsl(200, 100%, 50%)', // Blue
+            'hsl(270, 100%, 60%)', // Purple
+            'hsl(300, 100%, 60%)', // Magenta
+            'hsl(50, 100%, 50%)',  // Yellow (Crash)
+            'hsl(120, 100%, 50%)'  // Green (Perc)
         ];
     }
 
