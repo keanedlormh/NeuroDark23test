@@ -1,7 +1,7 @@
 /*
- * AUDIO ENGINE MODULE (v38 - Export Master)
- * Handles AudioContext, Scheduling, Synthesis, and Offline Rendering.
- * Ensures strict synchronization between UI State and Audio Output.
+ * AUDIO ENGINE MODULE (v37 - Drum Mix Support)
+ * Handles AudioContext, Scheduling, Synthesis, and Rendering.
+ * Updated to support Drum Volume Mixing & Variants in Offline Render.
  */
 
 class AudioEngine {
@@ -26,7 +26,6 @@ class AudioEngine {
             this.masterGain = this.ctx.createGain();
             this.masterGain.gain.value = 0.6;
 
-            // Master Bus Compression (Glue)
             this.compressor = this.ctx.createDynamicsCompressor();
             this.compressor.threshold.value = -3;
             this.compressor.knee.value = 30;
@@ -151,7 +150,7 @@ class AudioEngine {
 
         // Play Drums
         if (data.drums && window.drumSynth) {
-            // v38: data.drums contains Array of Channel IDs
+            // Note: Timematrix v37 will send channel IDs (0-8) here
             data.drums.forEach(id => window.drumSynth.play(id, time));
         }
 
@@ -193,7 +192,6 @@ class AudioEngine {
         if (window.drumSynth) window.drumSynth.play(drumId, this.ctx.currentTime);
     }
 
-    // --- EXPORT RENDERER (OFFLINE) ---
     async renderAudio() {
         if (window.AppState.isPlaying) this.stopPlayback();
         if(window.logToScreen) window.logToScreen("Starting Offline Render...");
@@ -206,35 +204,21 @@ class AudioEngine {
             
             const secPerStep = (60.0 / bpm) / 4;
             const totalSteps = stepsPerBlock * totalBlocks * reps;
-            const duration = totalSteps * secPerStep + 2.0; // +2s tail for reverb/delay
+            const duration = totalSteps * secPerStep + 2.0;
 
-            // Create Offline Context
             const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
             const offCtx = new OfflineCtx(2, 44100 * duration, 44100);
             
-            // Offline Master Chain
             const offMaster = offCtx.createGain();
             offMaster.gain.value = 0.6;
-            
-            // Add Compressor to offline chain
-            const offComp = offCtx.createDynamicsCompressor();
-            offComp.threshold.value = -3;
-            offComp.knee.value = 30;
-            offComp.ratio.value = 12;
-            offComp.attack.value = 0.003;
-            offComp.release.value = 0.25;
-
-            offMaster.connect(offComp);
-            offComp.connect(offCtx.destination);
+            offMaster.connect(offCtx.destination);
 
             // 1. CLONE BASS SYNTHS
             const offBassSynths = [];
             this.bassSynths.forEach(liveSynth => {
                 const s = new window.BassSynth(liveSynth.id);
                 s.init(offCtx, offMaster);
-                // Copy Params
                 s.params = { ...liveSynth.params };
-                // Sync FX Chain Params manually to be safe
                 if(s.fxChain) {
                     s.setDistortion(s.params.distortion);
                     s.setDistTone(s.params.distTone);
@@ -243,26 +227,20 @@ class AudioEngine {
                 offBassSynths.push(s);
             });
 
-            // 2. CLONE DRUM SYNTH
-            // Essential: We must clone the volume and variant states from the UI
-            let offDrum = null;
-            if (window.DrumSynth) {
-                offDrum = new window.DrumSynth();
-                offDrum.init(offCtx, offMaster);
+            // 2. CLONE DRUM SYNTH (NEW)
+            const offDrum = new window.DrumSynth();
+            offDrum.init(offCtx, offMaster);
+            
+            // Sync Drum State (Master Vol + Channel Configs)
+            if (window.drumSynth) {
+                offDrum.setMasterVolume(window.drumSynth.masterVolume);
                 
-                if (window.drumSynth) {
-                    // Sync Master Vol
-                    offDrum.setMasterVolume(window.drumSynth.masterVolume);
-                    
-                    // Sync Channels
-                    window.drumSynth.channels.forEach(ch => {
-                        // Volume
-                        offDrum.setChannelVolume(ch.id, ch.volume);
-                        // Sound Variant
-                        offDrum.setChannelVariant(ch.id, ch.variant);
-                        // Note: ColorID is visual only, does not affect audio render
-                    });
-                }
+                window.drumSynth.channels.forEach(ch => {
+                    // Copy Volume
+                    offDrum.setChannelVolume(ch.id, ch.volume);
+                    // Copy Variant
+                    offDrum.setChannelVariant(ch.id, ch.variant);
+                });
             }
 
             // 3. RENDER LOOP
@@ -271,13 +249,11 @@ class AudioEngine {
                 for (let b = 0; b < totalBlocks; b++) {
                     const blk = window.timeMatrix.blocks[b];
                     for (let s = 0; s < stepsPerBlock; s++) {
-                        
-                        // Render Drums
-                        if (blk.drums[s] && offDrum) {
+                        // Drums
+                        if (blk.drums[s]) {
                             blk.drums[s].forEach(id => offDrum.play(id, t));
                         }
-                        
-                        // Render Bass
+                        // Bass
                         if (blk.tracks) {
                             Object.keys(blk.tracks).forEach(tid => {
                                 const n = blk.tracks[tid][s];
@@ -287,17 +263,14 @@ class AudioEngine {
                                 }
                             });
                         }
-                        
                         t += secPerStep;
                     }
                 }
             }
 
-            // 4. PROCESS
             const renderedBuffer = await offCtx.startRendering();
             const wavBlob = this.bufferToWave(renderedBuffer, renderedBuffer.length);
             
-            // 5. DOWNLOAD
             const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
             a.href = url;
@@ -308,13 +281,11 @@ class AudioEngine {
             return true;
 
         } catch (e) {
-            console.error("Render Error:", e);
-            if(window.logToScreen) window.logToScreen("Render Error: " + e.message, 'error');
+            console.error(e);
             return false;
         }
     }
 
-    // Helper: Buffer to WAV conversion
     bufferToWave(abuffer, len) {
         let numOfChan = abuffer.numberOfChannels,
             length = len * numOfChan * 2 + 44,
