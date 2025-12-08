@@ -1,7 +1,7 @@
 /*
- * DRUM SYNTH MODULE (v38 - Logic Update)
+ * DRUM SYNTH MODULE (v38.1 - Fix Constructor Export)
  * 9 Independent Channels with Volume Control and Sound Variants.
- * Updated: Explicit Color IDs for Swapping & High Contrast Palette.
+ * Updated: Exports Class for Offline Rendering.
  */
 
 class DrumSynth {
@@ -15,7 +15,6 @@ class DrumSynth {
         
         // 9 Fixed Slots with Defaults
         // Variants: 0=OFF, 1=Default, 2-8=Alt Sounds
-        // Updated: colorId initialized explicitly to allow swapping logic in UI
         this.channels = [
             { id: 0, type: 'kick',  name: 'KICK',   variant: 1, volume: 90, gainNode: null, colorId: 0 },
             { id: 1, type: 'snare', name: 'SNARE',  variant: 1, volume: 85, gainNode: null, colorId: 1 },
@@ -29,7 +28,6 @@ class DrumSynth {
         ];
 
         // Updated High-Contrast Palette (v38)
-        // Optimized for dark backgrounds and clear distinction
         this.channelColors = [
             'hsl(0, 100%, 60%)',    // 0: Red (Kick)
             'hsl(35, 100%, 55%)',   // 1: Orange (Snare)
@@ -326,5 +324,10 @@ class DrumSynth {
     }
 }
 
-// Instance
+// ----------------------------------------------------
+// EXPORTING THE CLASS GLOBALLY FOR OFFLINE RENDERING
+// ----------------------------------------------------
+window.DrumSynth = DrumSynth; // <-- ESTA LÍNEA FALTABA
+
+// Instance for Real-time Playback
 window.drumSynth = new DrumSynth();
