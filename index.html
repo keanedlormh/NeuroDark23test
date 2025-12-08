@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeuroDark23 | FX Core</title>
-    <!-- CSS Nativo (Offline) -->
+    <title>NeuroDark23 | Light Dark Edition</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- SYSTEM LOGGER -->
     <script>
         window.logToScreen = function(msg, type='info') {
             const consoleEl = document.getElementById('sys-log-content');
@@ -25,14 +23,14 @@
         window.onerror = function(msg, url, line) {
             window.logToScreen(`CRITICAL: ${msg} (L${line})`, 'error');
             const p = document.getElementById('sys-log-panel');
-            if(p) p.classList.add('visible'); // Clase controlada por CSS
+            if(p) p.classList.add('visible');
             return false;
         };
     </script>
 </head>
-<body class="theme-dark">
+<body>
 
-    <!-- CONSOLA DE LOGS (Estilo Terminal) -->
+    <!-- LOG TERMINAL -->
     <div id="sys-log-panel" class="log-terminal">
         <div class="terminal-header">
             <span class="terminal-title">:: SYSTEM_DEBUG ::</span>
@@ -42,16 +40,16 @@
             </div>
         </div>
         <div id="sys-log-content" class="terminal-body custom-scroll">
-            <div class="log-init">System Ready. Waiting for Audio Context...</div>
+            <div class="log-init">System Ready. Audio Engine Standby...</div>
         </div>
     </div>
 
-    <!-- MODAL: EXPORT WAV -->
+    <!-- MODAL: EXPORT -->
     <div id="export-modal" class="modal-overlay hidden">
         <div class="modal-window border-green">
-            <h2 class="modal-header text-green">RENDER WAV</h2>
+            <h2 class="modal-header text-green">RENDER AUDIO</h2>
             <div class="modal-content">
-                <label class="label-tech text-green">LOOPS:</label>
+                <label class="label-tech text-green">LOOP COUNT:</label>
                 <div class="grid-4">
                     <button class="btn-option active" data-rep="1">1x</button>
                     <button class="btn-option" data-rep="2">2x</button>
@@ -60,16 +58,16 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="btn-start-render" class="btn-primary btn-green-glow">RENDER</button>
+                <button id="btn-start-render" class="btn-primary btn-green-solid">RENDER WAV</button>
                 <button id="btn-close-export" class="btn-text">CANCEL</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: VIRTUAL MEMORY (CSV) -->
+    <!-- MODAL: MEMORY -->
     <div id="memory-modal" class="modal-overlay hidden">
         <div class="modal-window border-purple modal-wide">
-            <h2 class="modal-header text-purple">VIRTUAL MEMORY (.CSV)</h2>
+            <h2 class="modal-header text-purple">VIRTUAL MEMORY</h2>
             
             <div class="modal-content">
                 <label class="label-tech text-purple">DATA STREAM:</label>
@@ -97,7 +95,7 @@
     <!-- MAIN MENU -->
     <div id="main-menu" class="modal-overlay hidden">
         <div class="menu-container">
-            <h2 class="menu-logo glitch-text">MENU</h2>
+            <h2 class="menu-logo">MENU</h2>
             
             <div class="menu-section">
                  <button id="btn-toggle-ui-mode" class="btn-menu-toggle">UI MODE: ANALOG</button>
@@ -125,19 +123,17 @@
     <header class="top-bar">
         <div class="brand-group" id="app-logo">
             <div id="activity-led" class="led-status"></div>
-            <span class="brand-name glitch-text">NEURODARK23</span>
+            <span class="brand-name">NEURODARK23</span>
         </div>
         <button id="btn-open-menu" class="btn-icon-menu">&#9776;</button>
     </header>
 
-    <!-- WORKSPACE (SCROLLABLE) -->
+    <!-- WORKSPACE -->
     <div class="workspace-area custom-scroll">
         <div class="main-layout">
             
-            <!-- DASHBOARD / TRANSPORT -->
+            <!-- DASHBOARD -->
             <div class="dashboard-card">
-                <div class="dash-bg-pattern"></div>
-                
                 <div class="dash-slot">
                     <label class="label-mini">BPM</label>
                     <input type="number" id="bpm-input" value="174" class="input-bpm">
@@ -156,7 +152,7 @@
                 </div>
             </div>
 
-            <!-- TRACK / CHAIN BAR -->
+            <!-- CHAIN BAR -->
             <div class="chain-section">
                 <div class="chain-header">
                     <span class="label-mini">CHAIN</span>
@@ -174,7 +170,7 @@
                 <div id="track-bar" class="track-timeline custom-scroll"></div>
             </div>
 
-            <!-- INSTRUMENT TABS -->
+            <!-- TABS -->
             <div id="instrument-tabs-container" class="tabs-bar"></div>
 
             <!-- SEQUENCER GRID -->
@@ -184,10 +180,9 @@
         </div>
     </div>
 
-    <!-- BOTTOM EDITOR PANEL -->
+    <!-- BOTTOM EDITOR -->
     <div id="editor-panel" class="editor-drawer expanded">
         
-        <!-- DRAWER HEADER -->
         <div class="drawer-header" id="panel-header-trigger">
             <span id="step-info-display" class="drawer-title">EDIT MODE</span>
             
@@ -201,24 +196,20 @@
             </div>
         </div>
 
-        <!-- DRAWER CONTENT -->
         <div class="drawer-body">
             
             <!-- BASS EDITOR -->
             <div id="editor-bass" class="editor-content-bass custom-scroll">
                 
-                <!-- FX CONTROLS -->
+                <!-- FX RACK -->
                 <div id="subpanel-fx" class="control-group">
                     <div id="fx-container-bar" class="fx-rack">
                         
-                        <!-- ANALOG SLIDERS -->
                         <div id="fx-controls-analog" class="rack-grid">
-                            <!-- VOL -->
                             <div class="rack-module span-2">
                                 <label class="mod-label text-green">VOL</label>
                                 <input type="range" id="vol-slider" min="0" max="100" value="85" class="fader">
                             </div>
-                            <!-- PARAMS -->
                             <div class="rack-module"><label class="mod-label">CUT</label><input type="range" id="cutoff-slider" min="100" max="5000" value="800" class="fader"></div>
                             <div class="rack-module"><label class="mod-label">RES</label><input type="range" id="res-slider" min="0" max="20" value="4" class="fader"></div>
                             <div class="rack-module"><label class="mod-label">ENV</label><input type="range" id="env-slider" min="0" max="100" value="60" class="fader"></div>
@@ -229,10 +220,7 @@
                             <div class="rack-module"><label class="mod-label">GAIN</label><input type="range" id="dgain-slider" min="0" max="100" value="60" class="fader"></div>
                         </div>
 
-                        <!-- DIGITAL NUMERICS (Hidden by default) -->
                         <div id="fx-controls-digital" class="digital-rack hidden">
-                            <!-- Generado dinámicamente o estático, mantendremos la estructura del JS -->
-                            <!-- (Se llena con inputs similares pero con estilo digital) -->
                             <div class="digi-module"><div class="digi-label text-green">VOL</div><div class="digi-screen"><input type="number" id="vol-digital" class="digi-val"></div><div class="digi-btns"><button class="dfx-btn" data-target="volume" data-dir="-1">-</button><button class="dfx-btn" data-target="volume" data-dir="1">+</button></div></div>
                             <div class="digi-module"><div class="digi-label">CUT</div><div class="digi-screen"><input type="number" id="cutoff-digital" class="digi-val"></div><div class="digi-btns"><button class="dfx-btn" data-target="cutoff" data-dir="-1">-</button><button class="dfx-btn" data-target="cutoff" data-dir="1">+</button></div></div>
                             <div class="digi-module"><div class="digi-label">RES</div><div class="digi-screen"><input type="number" id="res-digital" class="digi-val"></div><div class="digi-btns"><button class="dfx-btn" data-target="resonance" data-dir="-1">-</button><button class="dfx-btn" data-target="resonance" data-dir="1">+</button></div></div>
@@ -246,29 +234,25 @@
                     </div>
                 </div>
 
-                <!-- KEYBOARD CONTROLS -->
+                <!-- KEYBOARD -->
                 <div id="subpanel-keys" class="control-group">
                     <div class="keyboard-bar">
-                        <!-- OCTAVE -->
                         <div class="octave-widget">
                             <button id="oct-down" class="btn-oct">-</button>
                             <span id="oct-display" class="oct-val text-green">3</span>
                             <button id="oct-up" class="btn-oct">+</button>
                         </div>
                         
-                        <!-- MODS -->
                         <div class="note-mods">
                             <button id="btn-toggle-slide" class="btn-mod">~ SLIDE</button>
                             <button id="btn-toggle-accent" class="btn-mod">^ ACCENT</button>
                         </div>
 
-                        <!-- WAVE -->
                         <button id="btn-waveform" class="btn-wave">
                             <span class="wave-symbol">~</span> SAW
                         </button>
                     </div>
 
-                    <!-- PIANO -->
                     <div id="piano-container" class="piano-bed">
                         <div class="keys-white">
                             <button class="key-w" data-note="C">C</button>
@@ -279,12 +263,11 @@
                             <button class="key-w" data-note="A">A</button>
                             <button class="key-w" data-note="B">B</button>
                         </div>
-                        <!-- BLACK KEYS (Absolute) -->
-                        <button class="key-b pos-1" data-note="C#"></button>
-                        <button class="key-b pos-2" data-note="D#"></button>
-                        <button class="key-b pos-3" data-note="F#"></button>
-                        <button class="key-b pos-4" data-note="G#"></button>
-                        <button class="key-b pos-5" data-note="A#"></button>
+                        <button class="key-b pos-1" data-note="C#">C#</button>
+                        <button class="key-b pos-2" data-note="D#">D#</button>
+                        <button class="key-b pos-3" data-note="F#">F#</button>
+                        <button class="key-b pos-4" data-note="G#">G#</button>
+                        <button class="key-b pos-5" data-note="A#">A#</button>
                     </div>
                     
                     <button id="btn-delete-note" class="btn-delete-note">CLEAR NOTE</button>
@@ -292,9 +275,7 @@
             </div>
 
             <!-- DRUM EDITOR -->
-            <div id="editor-drum" class="editor-content-drum hidden custom-scroll">
-                <!-- Se rellena dinámicamente, pero ahora usaremos clases semánticas -->
-            </div>
+            <div id="editor-drum" class="editor-content-drum hidden custom-scroll"></div>
         </div>
     </div>
 
