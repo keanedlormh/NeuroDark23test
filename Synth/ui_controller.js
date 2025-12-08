@@ -1,7 +1,7 @@
 /*
- * UI CONTROLLER MODULE (v37 - Drum Matrix & Config)
+ * UI CONTROLLER MODULE (v38 - Color Swap & Drum Grid)
  * Handles DOM manipulation, Event Listeners, and Visual Feedback.
- * Implements Dynamic Drum Editor & Configuration Menu.
+ * Implements Dynamic Drum Editor, Numeric Inputs & Config Menu.
  */
 
 class UIController {
@@ -11,6 +11,10 @@ class UIController {
         // Timer references for repeater buttons
         this.repeatTimer = null;
         this.repeatInterval = null;
+        
+        // State for Color Swapping
+        this.pendingColorSwap = null; // Stores channel ID of first click
+        this.isDrumConfigCollapsed = true; // Start collapsed
     }
 
     init() {
@@ -418,15 +422,23 @@ class UIController {
         // 1. Master Volume Header
         const masterRow = document.createElement('div');
         masterRow.className = 'drum-master-panel';
+        // Updated for Input support
         masterRow.innerHTML = `
             <span class="drum-master-label">MASTER VOL</span>
             <div class="drum-vol-ctrl">
                 <button class="drum-vol-btn drum-rep-btn" data-target="master" data-dir="-1">-</button>
-                <div class="drum-vol-display" id="drum-master-vol">${window.drumSynth.masterVolume}</div>
+                <input type="number" class="drum-vol-input" id="drum-master-vol" value="${window.drumSynth.masterVolume}">
                 <button class="drum-vol-btn drum-rep-btn" data-target="master" data-dir="1">+</button>
             </div>
         `;
         c.appendChild(masterRow);
+
+        // Bind Master Input
+        const mstInput = masterRow.querySelector('#drum-master-vol');
+        mstInput.onchange = (e) => {
+            const val = parseInt(e.target.value);
+            window.drumSynth.setMasterVolume(val);
+        };
 
         // 2. Channel Rows
         const cur = window.timeMatrix.blocks[window.AppState.editingBlock].drums[window.AppState.selectedStep];
@@ -436,14 +448,13 @@ class UIController {
             if(ch.variant === 0) return;
 
             const act = cur.includes(ch.id);
-            // Default color if undefined
             const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
             const color = window.drumSynth.channelColors[colIndex % 9];
 
             const row = document.createElement('div');
             row.className = `drum-row ${act ? 'active' : ''}`;
             
-            // Channel Info & Toggle (Left Side)
+            // Channel Info & Toggle
             const infoDiv = document.createElement('div');
             infoDiv.className = 'drum-info';
             infoDiv.innerHTML = `<div class="drum-color-tag" style="background:${color};box-shadow:0 0 5px ${color}"></div><span class="drum-label">${ch.name}</span>`;
@@ -454,36 +465,62 @@ class UIController {
                 this.updateEditors();
             };
 
-            // Volume Control (Right Side)
+            // Volume Control (Inputs + Buttons)
             const volDiv = document.createElement('div');
             volDiv.className = 'drum-vol-ctrl';
             volDiv.innerHTML = `
                 <button class="drum-vol-btn drum-rep-btn" data-target="${ch.id}" data-dir="-1">-</button>
-                <div class="drum-vol-display" id="drum-vol-${ch.id}">${ch.volume}</div>
+                <input type="number" class="drum-vol-input" id="drum-vol-${ch.id}" value="${ch.volume}">
                 <button class="drum-vol-btn drum-rep-btn" data-target="${ch.id}" data-dir="1">+</button>
             `;
+
+            // Bind Channel Input
+            const volInput = volDiv.querySelector(`#drum-vol-${ch.id}`);
+            volInput.onclick = (e) => e.stopPropagation(); // Prevent row click
+            volInput.onchange = (e) => {
+                const val = parseInt(e.target.value);
+                window.drumSynth.setChannelVolume(ch.id, val);
+            };
 
             row.appendChild(infoDiv);
             row.appendChild(volDiv);
             c.appendChild(row);
         });
 
-        // Re-bind repeater buttons for the new elements
+        // Re-bind repeater buttons
         this.setupDrumRepeaters();
     }
 
     renderDrumConfigMenu() {
-        const c = document.getElementById('drum-config-container');
-        if(!c || !window.drumSynth) return;
-        c.innerHTML = '';
+        const container = document.getElementById('drum-config-container');
+        if(!container || !window.drumSynth) return;
+        container.innerHTML = '';
 
+        // Header for Collapsible Logic
+        const header = document.createElement('div');
+        header.className = 'menu-group-header';
+        header.innerHTML = `<span>DRUM CONFIGURATION</span><span>${this.isDrumConfigCollapsed ? '[+]' : '[-]'}</span>`;
+        header.onclick = () => {
+            this.isDrumConfigCollapsed = !this.isDrumConfigCollapsed;
+            this.renderDrumConfigMenu();
+        };
+        container.appendChild(header);
+
+        // Content Area
+        const content = document.createElement('div');
+        content.className = `menu-group-content ${this.isDrumConfigCollapsed ? 'collapsed' : ''}`;
+        container.appendChild(content);
+
+        // Grid Items
         window.drumSynth.channels.forEach(ch => {
             const row = document.createElement('div');
             row.className = 'config-row';
             
-            // Color Cycle logic
             const colIndex = (ch.colorId !== undefined) ? ch.colorId : ch.id;
             const color = window.drumSynth.channelColors[colIndex % 9];
+            
+            // Check if swapping this item
+            const isSwapping = (this.pendingColorSwap === ch.id);
 
             row.innerHTML = `
                 <div class="config-label">${ch.id + 1}</div>
@@ -495,32 +532,58 @@ class UIController {
                         <option value="3" ${ch.variant===3?'selected':''}>${ch.name} 3</option>
                         <option value="4" ${ch.variant===4?'selected':''}>${ch.name} 4</option>
                     </select>
-                    <div class="color-select" id="conf-col-${ch.id}" style="background:${color}"></div>
+                    <div class="color-select ${isSwapping ? 'color-swapping' : ''}" 
+                         id="conf-col-${ch.id}" 
+                         style="background:${color}">
+                    </div>
                 </div>
             `;
-            c.appendChild(row);
+            content.appendChild(row);
 
             // Bind Events
             const sel = row.querySelector(`#conf-var-${ch.id}`);
             sel.onchange = (e) => {
                 const val = parseInt(e.target.value);
                 window.drumSynth.setChannelVariant(ch.id, val);
-                // If set to OFF, we need to refresh editor
                 if(window.AppState.activeView === 'drum') this.updateEditors();
             };
 
             const colBtn = row.querySelector(`#conf-col-${ch.id}`);
-            colBtn.onclick = () => {
-                const nextCol = (colIndex + 1) % 9;
-                ch.colorId = nextCol;
-                colBtn.style.background = window.drumSynth.channelColors[nextCol];
-                if(window.AppState.activeView === 'drum') this.updateEditors();
-            };
+            colBtn.onclick = () => this.handleColorSwap(ch.id);
         });
     }
 
+    handleColorSwap(id) {
+        if(this.pendingColorSwap === null) {
+            // First click - Init swap
+            this.pendingColorSwap = id;
+            this.renderDrumConfigMenu(); // Re-render to show blinking border
+        } else if (this.pendingColorSwap === id) {
+            // Cancel swap (clicked same)
+            this.pendingColorSwap = null;
+            this.renderDrumConfigMenu();
+        } else {
+            // Execute Swap
+            const srcId = this.pendingColorSwap;
+            const targetId = id;
+            
+            const srcCh = window.drumSynth.channels[srcId];
+            const targetCh = window.drumSynth.channels[targetId];
+            
+            // Swap ID values
+            const tempCol = srcCh.colorId;
+            srcCh.colorId = targetCh.colorId;
+            targetCh.colorId = tempCol;
+            
+            this.pendingColorSwap = null;
+            
+            // Full refresh
+            this.renderDrumConfigMenu();
+            if(window.AppState.activeView === 'drum') this.updateEditors();
+        }
+    }
+
     setupDrumRepeaters() {
-        // Handles Volume buttons in Drum Editor
         document.querySelectorAll('.drum-rep-btn').forEach(btn => {
             const target = btn.dataset.target; // 'master' or channel ID
             const dir = parseInt(btn.dataset.dir);
@@ -531,20 +594,19 @@ class UIController {
                 if(target === 'master') {
                     const next = Math.max(0, Math.min(100, window.drumSynth.masterVolume + dir));
                     window.drumSynth.setMasterVolume(next);
-                    const disp = document.getElementById('drum-master-vol');
-                    if(disp) disp.innerText = next;
+                    const input = document.getElementById('drum-master-vol');
+                    if(input) input.value = next;
                 } else {
                     const id = parseInt(target);
                     const ch = window.drumSynth.channels[id];
                     if(ch) {
                         const next = Math.max(0, Math.min(100, ch.volume + dir));
                         window.drumSynth.setChannelVolume(id, next);
-                        const disp = document.getElementById(`drum-vol-${id}`);
-                        if(disp) disp.innerText = next;
+                        const input = document.getElementById(`drum-vol-${id}`);
+                        if(input) input.value = next;
                     }
                 }
             };
-
             this.bindRepeater(btn, change);
         });
     }
