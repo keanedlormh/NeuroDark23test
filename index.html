@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NeuroDark23 | v39 Final UI</title>
     <link rel="stylesheet" href="style.css">
-    
+
     <script>
         window.logToScreen = function(msg, type='info') {
             const consoleEl = document.getElementById('sys-log-content');
@@ -68,7 +68,7 @@
     <div id="memory-modal" class="modal-overlay hidden">
         <div class="modal-window border-purple modal-wide">
             <h2 class="modal-header text-purple">VIRTUAL MEMORY</h2>
-            
+
             <div class="modal-content">
                 <label class="label-tech text-purple">DATA STREAM:</label>
                 <textarea id="csv-io-area" class="input-area custom-scroll" spellcheck="false"></textarea>
@@ -96,7 +96,7 @@
     <div id="main-menu" class="modal-overlay hidden">
         <div class="menu-container">
             <h2 class="menu-logo">MENU CONFIG</h2>
-            
+
             <div class="menu-section">
                  <button id="btn-toggle-ui-mode" class="btn-menu-toggle">UI MODE: ANALOG</button>
                  <button id="btn-toggle-visualizer" class="btn-menu-toggle">VISUALIZER: OFF</button>
@@ -121,7 +121,7 @@
                 <button id="btn-menu-clear" class="btn-menu-action text-red-dim">CLEAR PATTERN</button>
                 <button id="btn-menu-panic" class="btn-menu-action text-red bg-red-dim">RESET SYSTEM</button>
             </div>
-            
+
             <button id="btn-menu-close" class="btn-resume">RESUME</button>
         </div>
     </div>
@@ -138,7 +138,7 @@
     <!-- WORKSPACE -->
     <div class="workspace-area custom-scroll">
         <div class="main-layout">
-            
+
             <!-- DASHBOARD -->
             <div class="dashboard-card">
                 <div class="dash-slot">
@@ -183,20 +183,20 @@
 
             <!-- STEP MATRIX -->
             <div id="matrix-container" class="step-grid"></div>
-            
+
             <div class="spacer-bottom"></div> 
         </div>
     </div>
 
     <!-- EDITOR PANEL (DRAWER) -->
     <div id="editor-panel" class="editor-drawer expanded">
-        
+
         <div class="drawer-header" id="panel-header-trigger">
             <span id="step-info-display" class="drawer-title">EDIT MODE</span>
-            
+
             <!-- DRAWER ACTIONS -->
             <div class="drawer-actions" onclick="event.stopPropagation()">
-                
+
                 <!-- BASS SPECIFIC TOOLS (Grouped for visibility toggling) -->
                 <div id="bass-tools-group" class="tools-group">
                     <button id="btn-waveform" class="btn-pill">
@@ -210,21 +210,21 @@
                     <button id="btn-toggle-view-keys" class="btn-pill active">KEYS</button>
                     <button id="btn-toggle-view-fx" class="btn-pill active">FX</button>
                 </div>
-                
+
                 <div class="sep-v-dark"></div>
                 <button id="btn-minimize-panel" class="btn-minimize">&#9660;</button>
             </div>
         </div>
 
         <div class="drawer-body">
-            
+
             <!-- BASS EDITOR -->
             <div id="editor-bass" class="editor-content-bass custom-scroll">
-                
+
                 <!-- FX RACK -->
                 <div id="subpanel-fx" class="control-group">
                     <div id="fx-container-bar" class="fx-rack">
-                        
+
                         <!-- Analog Controls -->
                         <div id="fx-controls-analog" class="rack-grid">
                             <div class="rack-module span-2">
@@ -264,7 +264,7 @@
                             <span id="oct-display" class="oct-val text-green">3</span>
                             <button id="oct-up" class="btn-oct">+</button>
                         </div>
-                        
+
                         <div class="note-mods">
                             <button id="btn-toggle-slide" class="btn-mod">~ SLIDE</button>
                             <button id="btn-toggle-accent" class="btn-mod">^ ACCENT</button>
@@ -288,7 +288,7 @@
                         <button class="key-b pos-4" data-note="G#">G#</button>
                         <button class="key-b pos-5" data-note="A#">A#</button>
                     </div>
-                    
+
                     <button id="btn-delete-note" class="btn-delete-note">CLEAR NOTE</button>
                 </div>
             </div>
